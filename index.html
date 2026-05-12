@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="fr" data-lang="fr">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1280">
 <title>ELYS · Votre IA parle à tous vos logiciels</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --cream:#f5f5f0;
@@ -21,12 +21,12 @@
   }
 
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:#f5f5f0;color:var(--body);font-family:"DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.5}
+  html,body{background:var(--cream);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.5}
   body{min-width:1280px}
   a{color:inherit;text-decoration:none}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
-  .display{font-family:"Syne",sans-serif;font-weight:800;letter-spacing:-0.02em;color:var(--ink);line-height:0.95;text-transform:uppercase}
+  .display{font-family:"Archivo Black",sans-serif;font-weight:900;letter-spacing:-0.02em;color:var(--ink);line-height:0.95}
   .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
   .upper{text-transform:uppercase;letter-spacing:0.08em}
 
@@ -35,7 +35,7 @@
   /* ───── NAV ───── */
   .nav{border-bottom:1px solid var(--rule);background:var(--cream);position:sticky;top:0;z-index:50}
   .nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px}
-  .logo{font-family:"Syne",sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.01em;color:var(--ink);display:flex;align-items:baseline;gap:8px}
+  .logo{font-family:"Archivo Black",sans-serif;font-size:24px;letter-spacing:-0.01em;color:var(--ink);display:flex;align-items:baseline;gap:8px}
   .logo::after{content:"";display:inline-block;width:8px;height:8px;background:var(--blue);transform:translateY(-2px)}
   .nav-links{display:flex;align-items:center;gap:40px}
   .nav-links a{font-size:14px;font-weight:500;color:var(--ink);position:relative;padding:6px 0}
@@ -52,15 +52,15 @@
   .ghost:hover{background:var(--ink);color:var(--cream)}
 
   /* ───── HERO ───── */
-  .hero{padding:144px 0 112px;border-bottom:1px solid var(--rule);background:#f5f5f0}
-  .hero-meta{display:flex;align-items:center;gap:14px;margin-bottom:32px}
+  .hero{padding:96px 0 112px;border-bottom:1px solid var(--rule)}
+  .hero-meta{display:flex;align-items:center;gap:14px;margin-bottom:40px}
   .hero-meta .dot{width:8px;height:8px;background:var(--blue)}
   .hero-meta .tag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);letter-spacing:0.08em;text-transform:uppercase}
   .hero-meta .rule{flex:1;height:1px;background:var(--rule)}
   .hero-meta .ver{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted)}
   .hero h1{font-size:76px;text-transform:uppercase;line-height:0.92;margin-bottom:32px;text-wrap:balance;max-width:1000px}
   .hero h1 .blu{color:var(--blue)}
-  .hero h1 .it{font-style:italic;font-family:"Syne",sans-serif;font-weight:800}
+  .hero h1 .it{font-style:italic;font-family:"Archivo Black",sans-serif}
   .hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:80px;align-items:end;padding-top:32px;border-top:1px solid var(--rule)}
   .hero-sub{font-size:22px;color:var(--body);max-width:560px;line-height:1.4}
   .hero-sub strong{color:var(--ink);font-weight:600}
@@ -69,42 +69,29 @@
   .hero-actions .note{font-size:13px;color:var(--muted);font-family:"JetBrains Mono",monospace}
   .hero-actions .note b{color:var(--ink);font-weight:500}
 
-  /* Search bar inside the hero */
-  .hero-search{display:flex;align-items:stretch;border:1px solid var(--ink);background:#fff;max-width:680px;margin:36px 0 8px;box-shadow:6px 6px 0 var(--ink);transition:box-shadow .12s ease, transform .12s ease}
-  .hero-search:focus-within{box-shadow:8px 8px 0 var(--blue);transform:translate(-2px,-2px)}
-  .hero-search .icon{display:flex;align-items:center;justify-content:center;width:56px;color:var(--muted);border-right:1px solid var(--rule)}
-  .hero-search input{flex:1;padding:18px 18px;font:inherit;font-size:16px;color:var(--ink);background:transparent;border:0;outline:none;font-family:"DM Sans",sans-serif}
-  .hero-search input::placeholder{color:var(--muted)}
-  .hero-search button{display:inline-flex;align-items:center;gap:10px;padding:0 22px;background:var(--ink);color:#fff;font-weight:600;font-size:14px;border:0;font-family:inherit}
-  .hero-search button:hover{background:var(--blue)}
-  .hero-search button .arr{font-family:"JetBrains Mono",monospace}
-  .hero-search .kbd{display:inline-flex;align-items:center;gap:4px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);margin-right:14px;align-self:center}
-  .hero-search .kbd b{display:inline-block;border:1px solid var(--rule);padding:2px 6px;background:var(--cream);color:var(--ink);font-weight:500}
-
   /* ───── LOGOS BAND ───── */
-  .logos{padding:56px 0;border-bottom:1px solid var(--rule)}
-  .logos-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px}
+  .logos{padding:48px 0;border-bottom:1px solid var(--rule)}
+  .logos-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
   .logos-head .lbl{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
   .logos-head .lbl b{color:var(--ink);font-weight:600}
-  .logos-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-  @media (min-width:900px){.logos-row{grid-template-columns:repeat(9,1fr)}}
-  .brand{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--rule);background:#fff;transition:border-color .12s ease, transform .12s ease}
-  .brand:hover{border-color:var(--ink);transform:translateY(-1px)}
-  .brand .mark{flex:0 0 auto;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:"Syne",sans-serif;font-weight:800;font-size:14px;letter-spacing:-0.02em;border-radius:4px}
-  .brand .nm{font-family:"DM Sans",sans-serif;font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;letter-spacing:-0.01em}
+  .logos-row{display:grid;grid-template-columns:repeat(9,1fr);align-items:center}
+  .logos-row .l{font-family:"Archivo Black",sans-serif;font-size:18px;color:#9aa0a6;letter-spacing:-0.01em;text-align:center;padding:8px 0;filter:grayscale(1);transition:color .12s}
+  .logos-row .l:hover{color:var(--ink)}
+  .logos-row .l.serif{font-family:"DM Sans",sans-serif;font-weight:600;font-style:italic}
+  .logos-row .l.mono{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:14px;text-transform:uppercase;letter-spacing:0.06em}
 
   /* ───── HOW IT WORKS ───── */
   .section-head{padding:96px 0 32px;display:grid;grid-template-columns:1fr 2fr;gap:80px;align-items:end;border-top:0}
   .section-head .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--blue);text-transform:uppercase;letter-spacing:0.08em}
-  .section-head h2{font-family:"Syne",sans-serif;font-weight:800;font-size:64px;text-transform:uppercase;color:var(--ink);line-height:0.95;letter-spacing:-0.02em}
+  .section-head h2{font-size:64px;text-transform:uppercase;color:var(--ink);line-height:0.95}
   .section-head .lede{font-size:18px;color:var(--body);max-width:520px}
 
   .howto{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
   .step{padding:48px 32px 56px;border-right:1px solid var(--rule);position:relative;background:var(--cream)}
   .step:last-child{border-right:none}
-  .step .num{font-family:"Syne",sans-serif;font-weight:800;font-size:104px;color:var(--blue);line-height:0.9;letter-spacing:-0.02em;margin-bottom:32px}
+  .step .num{font-family:"Archivo Black",sans-serif;font-size:104px;color:var(--blue);line-height:0.9;letter-spacing:-0.02em;margin-bottom:32px}
   .step .htag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
-  .step h3{font-family:"Syne",sans-serif;font-weight:800;font-size:24px;text-transform:uppercase;color:var(--ink);margin-bottom:14px;line-height:1.05}
+  .step h3{font-family:"Archivo Black",sans-serif;font-size:24px;text-transform:uppercase;color:var(--ink);margin-bottom:14px;line-height:1.05}
   .step p{color:var(--body);font-size:15px;line-height:1.55;max-width:300px}
   .step .pin{position:absolute;top:32px;right:32px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
 
@@ -123,12 +110,12 @@
   .role{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
   .role .sq{width:10px;height:10px;background:var(--ink);display:inline-block}
   .role .sq.b{background:var(--blue)}
-  .prompt{font-family:"Syne",sans-serif;font-weight:800;font-size:32px;color:var(--ink);line-height:1.1;text-wrap:balance}
+  .prompt{font-family:"Archivo Black",sans-serif;font-size:32px;color:var(--ink);line-height:1.1;text-wrap:balance}
   .prompt .b{color:var(--blue)}
   .prompt-meta{margin-top:32px;padding-top:24px;border-top:1px solid var(--rule);display:grid;grid-template-columns:1fr 1fr;gap:20px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
   .prompt-meta b{display:block;color:var(--ink);font-family:"DM Sans",sans-serif;font-size:14px;font-weight:600;text-transform:none;letter-spacing:0;margin-top:4px}
 
-  .resp-title{font-family:"Syne",sans-serif;font-weight:800;font-size:18px;color:var(--ink);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .resp-title{font-family:"Archivo Black",sans-serif;font-size:18px;color:var(--ink);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
   .resp-title .badge{font-family:"JetBrains Mono",monospace;font-size:10px;background:var(--blue);color:#fff;padding:3px 6px;letter-spacing:0.08em}
 
   .table{width:100%;border-collapse:collapse;font-size:14px}
@@ -141,7 +128,7 @@
   .table tr:last-child td{border-bottom:none}
   .resp-foot{margin-top:18px;display:flex;align-items:center;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
   .resp-foot b{color:var(--ink);font-weight:500}
-  .resp-total{font-family:"Syne",sans-serif;font-weight:800;font-size:28px;color:var(--ink);margin-top:24px;padding-top:18px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline}
+  .resp-total{font-family:"Archivo Black",sans-serif;font-size:28px;color:var(--ink);margin-top:24px;padding-top:18px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline}
   .resp-total .lbl{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:400}
 
   /* ───── PRICING ───── */
@@ -152,10 +139,10 @@
   .plan.pro{border:2px solid var(--blue);margin:-1px;z-index:2}
   .plan .ptag{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
   .plan .ptag b{color:var(--ink);font-weight:500}
-  .plan .pname{font-family:"Syne",sans-serif;font-weight:800;font-size:40px;text-transform:uppercase;color:var(--ink);line-height:1}
+  .plan .pname{font-family:"Archivo Black",sans-serif;font-size:40px;text-transform:uppercase;color:var(--ink);line-height:1}
   .plan.pro .badge{position:absolute;top:-12px;left:32px;background:var(--blue);color:#fff;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px}
   .plan .price{display:flex;align-items:baseline;gap:6px;padding-bottom:20px;border-bottom:1px solid var(--rule)}
-  .plan .price .v{font-family:"Syne",sans-serif;font-weight:800;font-size:56px;color:var(--ink);line-height:0.9;letter-spacing:-0.02em}
+  .plan .price .v{font-family:"Archivo Black",sans-serif;font-size:56px;color:var(--ink);line-height:0.9;letter-spacing:-0.02em}
   .plan .price .u{font-size:14px;color:var(--muted);white-space:nowrap}
   .plan .lede{font-size:14px;color:var(--body);line-height:1.5;min-height:42px}
   .plan ul{list-style:none;display:flex;flex-direction:column;gap:12px;padding:8px 0 16px;border-bottom:1px solid var(--rule);margin-bottom:auto}
@@ -172,7 +159,7 @@
   .statement{padding:120px 0;border-bottom:1px solid var(--rule)}
   .statement .grid{display:grid;grid-template-columns:80px 1fr 80px;gap:48px;align-items:start}
   .statement .col{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
-  .statement h2{font-family:"Syne",sans-serif;font-weight:800;font-size:88px;text-transform:uppercase;color:var(--ink);line-height:0.92;text-wrap:balance}
+  .statement h2{font-family:"Archivo Black",sans-serif;font-size:88px;text-transform:uppercase;color:var(--ink);line-height:0.92;text-wrap:balance}
   .statement h2 .strike{text-decoration:line-through;text-decoration-thickness:8px;text-decoration-color:var(--blue);color:var(--muted)}
   .statement h2 .blu{color:var(--blue)}
 
@@ -247,26 +234,6 @@
       <span class="blu">AI.</span>
     </h1>
 
-    <form class="hero-search" role="search" onsubmit="event.preventDefault();">
-      <span class="icon" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
-          <circle cx="11" cy="11" r="7"></circle>
-          <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
-        </svg>
-      </span>
-      <input type="search" name="q"
-             data-fr placeholder="Cherchez votre logiciel… (Pennylane, Outlook, Sage…)"
-             autocomplete="off" spellcheck="false">
-      <input type="search" name="q-en"
-             data-en placeholder="Search your software… (Pennylane, Outlook, Sage…)"
-             autocomplete="off" spellcheck="false">
-      <span class="kbd"><b>⌘</b><b>K</b></span>
-      <button type="submit">
-        <span data-fr>Connecter</span><span data-en>Connect</span>
-        <span class="arr">→</span>
-      </button>
-    </form>
-
     <div class="hero-grid">
       <p class="hero-sub" data-fr>
         Connectez <strong>Claude, ChatGPT, Gemini ou Mistral</strong> à n'importe quel logiciel web. Une URL. Un copier-coller. Deux minutes.
@@ -298,15 +265,15 @@
       </div>
     </div>
     <div class="logos-row">
-      <div class="brand"><span class="mark" style="background:#5b6dff">P</span><span class="nm">Pennylane</span></div>
-      <div class="brand"><span class="mark" style="background:#00d639">S</span><span class="nm">Sage</span></div>
-      <div class="brand"><span class="mark" style="background:#e30613">E</span><span class="nm">EBP</span></div>
-      <div class="brand"><span class="mark" style="background:#1d1d1f">Q</span><span class="nm">Qonto</span></div>
-      <div class="brand"><span class="mark" style="background:#0078d4">O</span><span class="nm">Outlook</span></div>
-      <div class="brand"><span class="mark" style="background:#0050a0">C</span><span class="nm">Cegid</span></div>
-      <div class="brand"><span class="mark" style="background:#e3001b">S</span><span class="nm">Silae</span></div>
-      <div class="brand"><span class="mark" style="background:#0062ff">P</span><span class="nm">PayFit</span></div>
-      <div class="brand"><span class="mark" style="background:#0055a4">U</span><span class="nm">URSSAF</span></div>
+      <span class="l">Pennylane</span>
+      <span class="l serif">Sage</span>
+      <span class="l mono">EBP</span>
+      <span class="l">Qonto</span>
+      <span class="l serif">Outlook</span>
+      <span class="l">Cegid</span>
+      <span class="l mono">Silae</span>
+      <span class="l">PayFit</span>
+      <span class="l mono">URSSAF</span>
     </div>
   </div>
 </section>
