@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>ELYS · Votre IA parle à tous vos logiciels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f5f5f0;
+    --cream-2:#ecece5;
+    --ink:#000000;
+    --body:#374151;
+    --muted:#6b7280;
+    --rule:#e5e5e5;
+    --rule-strong:#000000;
+    --blue:#1d4ed8;
+    --blue-ink:#1538a8;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--cream);color:var(--body);font-family:"DM Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.5}
+  body{min-width:1280px}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  .display{font-family:"Archivo Black",sans-serif;font-weight:900;letter-spacing:-0.02em;color:var(--ink);line-height:0.95}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  .upper{text-transform:uppercase;letter-spacing:0.08em}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:0 48px}
+
+  /* ───── NAV ───── */
+  .nav{border-bottom:1px solid var(--rule);background:var(--cream);position:sticky;top:0;z-index:50}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px}
+  .logo{font-family:"Archivo Black",sans-serif;font-size:24px;letter-spacing:-0.01em;color:var(--ink);display:flex;align-items:baseline;gap:8px}
+  .logo::after{content:"";display:inline-block;width:8px;height:8px;background:var(--blue);transform:translateY(-2px)}
+  .nav-links{display:flex;align-items:center;gap:40px}
+  .nav-links a{font-size:14px;font-weight:500;color:var(--ink);position:relative;padding:6px 0}
+  .nav-links a:hover{color:var(--blue)}
+  .nav-right{display:flex;align-items:center;gap:20px}
+  .lang{display:flex;border:1px solid var(--ink);font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:500}
+  .lang button{padding:6px 10px;color:var(--ink);background:var(--cream)}
+  .lang button.on{background:var(--ink);color:var(--cream)}
+  .lang button + button{border-left:1px solid var(--ink)}
+  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--blue);color:#fff;padding:10px 18px;font-weight:600;font-size:14px;border:1px solid var(--blue);transition:background .12s ease}
+  .cta:hover{background:var(--blue-ink);color:#fff}
+  .cta .arr{font-family:"JetBrains Mono",monospace}
+  .ghost{display:inline-flex;align-items:center;gap:10px;padding:10px 18px;font-weight:600;font-size:14px;border:1px solid var(--ink);color:var(--ink);background:var(--cream)}
+  .ghost:hover{background:var(--ink);color:var(--cream)}
+
+  /* ───── HERO ───── */
+  .hero{padding:96px 0 112px;border-bottom:1px solid var(--rule)}
+  .hero-meta{display:flex;align-items:center;gap:14px;margin-bottom:40px}
+  .hero-meta .dot{width:8px;height:8px;background:var(--blue)}
+  .hero-meta .tag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);letter-spacing:0.08em;text-transform:uppercase}
+  .hero-meta .rule{flex:1;height:1px;background:var(--rule)}
+  .hero-meta .ver{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted)}
+  .hero h1{font-size:76px;text-transform:uppercase;line-height:0.92;margin-bottom:32px;text-wrap:balance;max-width:1000px}
+  .hero h1 .blu{color:var(--blue)}
+  .hero h1 .it{font-style:italic;font-family:"Archivo Black",sans-serif}
+  .hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:80px;align-items:end;padding-top:32px;border-top:1px solid var(--rule)}
+  .hero-sub{font-size:22px;color:var(--body);max-width:560px;line-height:1.4}
+  .hero-sub strong{color:var(--ink);font-weight:600}
+  .hero-actions{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+  .hero-actions .cta{padding:18px 28px;font-size:15px}
+  .hero-actions .note{font-size:13px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+  .hero-actions .note b{color:var(--ink);font-weight:500}
+
+  /* ───── LOGOS BAND ───── */
+  .logos{padding:48px 0;border-bottom:1px solid var(--rule)}
+  .logos-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+  .logos-head .lbl{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .logos-head .lbl b{color:var(--ink);font-weight:600}
+  .logos-row{display:grid;grid-template-columns:repeat(9,1fr);align-items:center}
+  .logos-row .l{font-family:"Archivo Black",sans-serif;font-size:18px;color:#9aa0a6;letter-spacing:-0.01em;text-align:center;padding:8px 0;filter:grayscale(1);transition:color .12s}
+  .logos-row .l:hover{color:var(--ink)}
+  .logos-row .l.serif{font-family:"DM Sans",sans-serif;font-weight:600;font-style:italic}
+  .logos-row .l.mono{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:14px;text-transform:uppercase;letter-spacing:0.06em}
+
+  /* ───── HOW IT WORKS ───── */
+  .section-head{padding:96px 0 32px;display:grid;grid-template-columns:1fr 2fr;gap:80px;align-items:end;border-top:0}
+  .section-head .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--blue);text-transform:uppercase;letter-spacing:0.08em}
+  .section-head h2{font-size:64px;text-transform:uppercase;color:var(--ink);line-height:0.95}
+  .section-head .lede{font-size:18px;color:var(--body);max-width:520px}
+
+  .howto{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+  .step{padding:48px 32px 56px;border-right:1px solid var(--rule);position:relative;background:var(--cream)}
+  .step:last-child{border-right:none}
+  .step .num{font-family:"Archivo Black",sans-serif;font-size:104px;color:var(--blue);line-height:0.9;letter-spacing:-0.02em;margin-bottom:32px}
+  .step .htag{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
+  .step h3{font-family:"Archivo Black",sans-serif;font-size:24px;text-transform:uppercase;color:var(--ink);margin-bottom:14px;line-height:1.05}
+  .step p{color:var(--body);font-size:15px;line-height:1.55;max-width:300px}
+  .step .pin{position:absolute;top:32px;right:32px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+
+  /* ───── DEMO ───── */
+  .demo-wrap{padding:96px 0 96px;border-bottom:1px solid var(--rule)}
+  .demo{border:1px solid var(--ink);background:var(--cream-2);display:grid;grid-template-columns:1fr 1.4fr}
+  .demo-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--ink);background:var(--ink);color:var(--cream)}
+  .demo-head .left{display:flex;align-items:center;gap:14px;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase}
+  .demo-head .dots{display:flex;gap:6px}
+  .demo-head .dots span{width:8px;height:8px;background:var(--cream)}
+  .demo-head .right{font-family:"JetBrains Mono",monospace;font-size:12px;color:#9aa0a6}
+  .demo-head .right b{color:var(--cream);font-weight:500}
+
+  .demo-left{padding:36px 36px 40px;border-right:1px solid var(--ink)}
+  .demo-right{padding:36px 36px 40px;background:var(--cream)}
+  .role{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .role .sq{width:10px;height:10px;background:var(--ink);display:inline-block}
+  .role .sq.b{background:var(--blue)}
+  .prompt{font-family:"Archivo Black",sans-serif;font-size:32px;color:var(--ink);line-height:1.1;text-wrap:balance}
+  .prompt .b{color:var(--blue)}
+  .prompt-meta{margin-top:32px;padding-top:24px;border-top:1px solid var(--rule);display:grid;grid-template-columns:1fr 1fr;gap:20px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
+  .prompt-meta b{display:block;color:var(--ink);font-family:"DM Sans",sans-serif;font-size:14px;font-weight:600;text-transform:none;letter-spacing:0;margin-top:4px}
+
+  .resp-title{font-family:"Archivo Black",sans-serif;font-size:18px;color:var(--ink);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .resp-title .badge{font-family:"JetBrains Mono",monospace;font-size:10px;background:var(--blue);color:#fff;padding:3px 6px;letter-spacing:0.08em}
+
+  .table{width:100%;border-collapse:collapse;font-size:14px}
+  .table th{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;text-align:left;padding:10px 0;border-bottom:1px solid var(--ink);font-weight:500}
+  .table th.r,.table td.r{text-align:right}
+  .table td{padding:14px 0;border-bottom:1px solid var(--rule);color:var(--ink);font-weight:500;vertical-align:top}
+  .table td .sub{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+  .table td .pill{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:10px;padding:3px 6px;border:1px solid var(--ink);text-transform:uppercase;letter-spacing:0.06em}
+  .table td .pill.late{background:var(--ink);color:var(--cream)}
+  .table tr:last-child td{border-bottom:none}
+  .resp-foot{margin-top:18px;display:flex;align-items:center;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+  .resp-foot b{color:var(--ink);font-weight:500}
+  .resp-total{font-family:"Archivo Black",sans-serif;font-size:28px;color:var(--ink);margin-top:24px;padding-top:18px;border-top:1px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline}
+  .resp-total .lbl{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:400}
+
+  /* ───── PRICING ───── */
+  .pricing-wrap{padding:96px 0 112px;border-bottom:1px solid var(--rule)}
+  .pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--ink)}
+  .plan{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:36px 32px 36px;background:var(--cream);display:flex;flex-direction:column;gap:24px;position:relative}
+  .plan:last-child{border-right:1px solid var(--ink)}
+  .plan.pro{border:2px solid var(--blue);margin:-1px;z-index:2}
+  .plan .ptag{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .plan .ptag b{color:var(--ink);font-weight:500}
+  .plan .pname{font-family:"Archivo Black",sans-serif;font-size:40px;text-transform:uppercase;color:var(--ink);line-height:1}
+  .plan.pro .badge{position:absolute;top:-12px;left:32px;background:var(--blue);color:#fff;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px}
+  .plan .price{display:flex;align-items:baseline;gap:6px;padding-bottom:20px;border-bottom:1px solid var(--rule)}
+  .plan .price .v{font-family:"Archivo Black",sans-serif;font-size:56px;color:var(--ink);line-height:0.9;letter-spacing:-0.02em}
+  .plan .price .u{font-size:14px;color:var(--muted);white-space:nowrap}
+  .plan .lede{font-size:14px;color:var(--body);line-height:1.5;min-height:42px}
+  .plan ul{list-style:none;display:flex;flex-direction:column;gap:12px;padding:8px 0 16px;border-bottom:1px solid var(--rule);margin-bottom:auto}
+  .plan ul li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--ink)}
+  .plan ul li::before{content:"";display:inline-block;width:8px;height:8px;background:var(--ink);margin-top:7px;flex-shrink:0}
+  .plan.pro ul li::before{background:var(--blue)}
+  .plan ul li .meta{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .plan .pcta{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border:1px solid var(--ink);color:var(--ink);font-weight:600;font-size:14px;background:var(--cream)}
+  .plan .pcta:hover{background:var(--ink);color:var(--cream)}
+  .plan.pro .pcta{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .plan.pro .pcta:hover{background:var(--blue-ink)}
+
+  /* ───── BIG STATEMENT ───── */
+  .statement{padding:120px 0;border-bottom:1px solid var(--rule)}
+  .statement .grid{display:grid;grid-template-columns:80px 1fr 80px;gap:48px;align-items:start}
+  .statement .col{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+  .statement h2{font-family:"Archivo Black",sans-serif;font-size:88px;text-transform:uppercase;color:var(--ink);line-height:0.92;text-wrap:balance}
+  .statement h2 .strike{text-decoration:line-through;text-decoration-thickness:8px;text-decoration-color:var(--blue);color:var(--muted)}
+  .statement h2 .blu{color:var(--blue)}
+
+  /* ───── FOOTER ───── */
+  footer{padding:48px 0 56px;border-top:1px solid var(--rule)}
+  .foot-top{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:40px;padding-bottom:48px;border-bottom:1px solid var(--rule);margin-bottom:32px}
+  .foot-col h4{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;font-weight:500}
+  .foot-col ul{list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--ink)}
+  .foot-col ul li a:hover{color:var(--blue)}
+  .foot-brand .logo{font-size:32px;margin-bottom:18px}
+  .foot-brand p{font-size:14px;color:var(--body);max-width:280px;margin-bottom:18px}
+  .foot-brand .made{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ink);padding:6px 10px}
+  .foot-brand .made .flag{display:inline-flex}
+  .foot-brand .made .flag span{display:block;width:8px;height:12px}
+  .foot-brand .made .flag .b{background:var(--blue)}
+  .foot-brand .made .flag .w{background:var(--cream);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+  .foot-brand .made .flag .r{background:#ef1d2d}
+  .foot-bot{display:flex;align-items:center;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
+  .foot-bot .legal{display:flex;gap:24px}
+  .foot-bot .legal a:hover{color:var(--ink)}
+
+  /* hidden state for FR/EN · controlled by data-lang. !important to win over
+     sibling display rules like .pill { display:inline-block } and .sub { display:block }. */
+  [data-en]{display:none !important}
+  html[data-lang="en"] [data-fr]{display:none !important}
+  html[data-lang="en"] [data-en]{display:revert !important}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="logo" href="#">ELYS</a>
+    <nav class="nav-links">
+      <a href="#connecteurs"><span data-fr>Connecteurs</span><span data-en>Connectors</span></a>
+      <a href="#pricing"><span data-fr>Pricing</span><span data-en>Pricing</span></a>
+      <a href="#docs"><span data-fr>Docs</span><span data-en>Docs</span></a>
+      <a href="#changelog"><span data-fr>Changelog</span><span data-en>Changelog</span></a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button class="on" data-set-lang="fr">FR</button>
+        <button data-set-lang="en">EN</button>
+      </div>
+      <a class="ghost" href="/app"><span data-fr>Se connecter</span><span data-en>Log in</span></a>
+      <a class="cta" href="/app"><span data-fr>Commencer</span><span data-en>Get started</span> <span class="arr">→</span></a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-meta">
+      <span class="dot"></span>
+      <span class="tag" data-fr>Votre IA · tous vos logiciels</span>
+      <span class="tag" data-en>Your AI · all your tools</span>
+      <span class="rule"></span>
+      <span class="ver" data-fr>MCP compatible</span>
+      <span class="ver" data-en>MCP compatible</span>
+    </div>
+
+    <h1 class="display" data-fr>
+      Libérez le plein<br>
+      potentiel de<br>
+      <span class="blu">l'IA.</span>
+    </h1>
+    <h1 class="display" data-en>
+      Unleash the full<br>
+      potential of<br>
+      <span class="blu">AI.</span>
+    </h1>
+
+    <div class="hero-grid">
+      <p class="hero-sub" data-fr>
+        Connectez <strong>Claude, ChatGPT, Gemini ou Mistral</strong> à n'importe quel logiciel web. Une URL. Un copier-coller. Deux minutes.
+      </p>
+      <p class="hero-sub" data-en>
+        Plug <strong>Claude, ChatGPT, Gemini or Mistral</strong> into any web software. One URL. One paste. Two minutes.
+      </p>
+      <div class="hero-actions">
+        <a class="cta" href="/app">
+          <span data-fr>Essayer gratuitement</span><span data-en>Try for free</span>
+          <span class="arr">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGOS BAND -->
+<section class="logos" id="connecteurs">
+  <div class="wrap">
+    <div class="logos-head">
+      <div class="lbl">
+        <span data-fr>Compatible avec <b>tous vos logiciels</b> métiers</span>
+        <span data-en>Compatible with <b>all your business tools</b></span>
+      </div>
+      <div class="lbl">
+        <span data-fr>Mis à jour <b>tous les lundis</b></span>
+        <span data-en>Updated <b>every Monday</b></span>
+      </div>
+    </div>
+    <div class="logos-row">
+      <span class="l">Pennylane</span>
+      <span class="l serif">Sage</span>
+      <span class="l mono">EBP</span>
+      <span class="l">Qonto</span>
+      <span class="l serif">Outlook</span>
+      <span class="l">Cegid</span>
+      <span class="l mono">Silae</span>
+      <span class="l">PayFit</span>
+      <span class="l mono">URSSAF</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow" data-fr>§ 01 · Procédure</div>
+        <div class="eyebrow" data-en>§ 01 · Procedure</div>
+      </div>
+      <div>
+        <h2 class="display" data-fr>Trois étapes.<br>Aucune ligne de code.</h2>
+        <h2 class="display" data-en>Three steps.<br>Zero lines of code.</h2>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="howto">
+      <div class="step">
+        <div class="pin">STEP_01</div>
+        <div class="num">01</div>
+        <div class="htag" data-fr>Choix du logiciel</div>
+        <div class="htag" data-en>Pick a tool</div>
+        <h3 data-fr>Choisissez votre logiciel</h3>
+        <h3 data-en>Choose your software</h3>
+        <p data-fr>Tapez le nom de l'outil que votre IA doit piloter. Pennylane, Qonto, Outlook, ou n'importe lequel de vos logiciels web.</p>
+        <p data-en>Type the name of the tool your AI should drive. Pennylane, Qonto, Outlook, or any of your web tools.</p>
+      </div>
+      <div class="step">
+        <div class="pin">STEP_02</div>
+        <div class="num">02</div>
+        <div class="htag" data-fr>Authentification</div>
+        <div class="htag" data-en>Authentication</div>
+        <h3 data-fr>Connectez-vous une fois</h3>
+        <h3 data-en>Sign in once</h3>
+        <p data-fr>Connexion standard, comme dans un navigateur. ELYS chiffre vos identifiants et n'y touche jamais. Vous gardez la main.</p>
+        <p data-en>Sign in like you normally would. ELYS encrypts your credentials and never reads them. You stay in control.</p>
+      </div>
+      <div class="step">
+        <div class="pin">STEP_03</div>
+        <div class="num">03</div>
+        <div class="htag" data-fr>Mise en service</div>
+        <div class="htag" data-en>Go live</div>
+        <h3 data-fr>Votre IA est prête</h3>
+        <h3 data-en>Your AI is ready</h3>
+        <p data-fr>Copiez l'URL ELYS dans Claude, ChatGPT ou Gemini. Votre IA peut désormais lire et écrire dans vos outils, en langage naturel.</p>
+        <p data-en>Paste the ELYS URL into Claude, ChatGPT or Gemini. Your AI can now read and write in your tools, in plain language.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATEMENT -->
+<section class="statement">
+  <div class="wrap">
+    <div class="grid">
+      <div class="col">§ 03</div>
+      <h2 data-fr>
+        Pas de <span class="strike">workflow</span>.<br>
+        Pas de <span class="strike">no-code</span>.<br>
+        Pas d'<span class="strike">intégration</span>.<br>
+        <span class="blu">Juste votre IA, et vos outils.</span>
+      </h2>
+      <h2 data-en>
+        No <span class="strike">workflow</span>.<br>
+        No <span class="strike">no-code</span>.<br>
+        No <span class="strike">integration</span>.<br>
+        <span class="blu">Just your AI, and your tools.</span>
+      </h2>
+      <div class="col" style="text-align:right">M · 2026</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-wrap" id="pricing">
+  <div class="wrap">
+    <div class="section-head" style="padding-top:32px">
+      <div>
+        <div class="eyebrow" data-fr>§ 04 · Tarifs</div>
+        <div class="eyebrow" data-en>§ 04 · Pricing</div>
+      </div>
+      <div>
+        <h2 class="display" data-fr>Simple.<br>Comme une facture.</h2>
+        <h2 class="display" data-en>Simple.<br>Like an invoice.</h2>
+        <p class="lede" style="margin-top:18px" data-fr>Trois plans. Aucun frais caché. Annulation en un clic depuis votre tableau de bord.</p>
+        <p class="lede" style="margin-top:18px" data-en>Three plans. No hidden fees. Cancel in one click from your dashboard.</p>
+      </div>
+    </div>
+
+    <div class="pricing">
+      <div class="plan">
+        <div>
+          <div class="pname">Free</div>
+        </div>
+        <div class="price">
+          <span class="v">0€</span>
+          <span class="u" data-fr>/ pour toujours</span>
+          <span class="u" data-en>/ forever</span>
+        </div>
+        <p class="lede" data-fr>Idéal pour tester ELYS avec un seul outil métier pendant deux semaines.</p>
+        <p class="lede" data-en>Ideal to try ELYS with a single business tool for two weeks.</p>
+        <ul>
+          <li><div><span data-fr>1 connecteur actif</span><span data-en>1 active connector</span></div></li>
+          <li><div><span data-fr>100 appels / mois</span><span data-en>100 calls / month</span><span class="meta" data-fr>≈ 25 requêtes par semaine</span><span class="meta" data-en>≈ 25 requests per week</span></div></li>
+          <li><div><span data-fr>Essai limité à 14 jours</span><span data-en>Limited to 14 days</span></div></li>
+          <li><div><span data-fr>Support communautaire</span><span data-en>Community support</span></div></li>
+        </ul>
+        <a class="pcta" href="#"><span data-fr>Choisir Free</span><span data-en>Pick Free</span> <span>→</span></a>
+      </div>
+
+      <div class="plan pro">
+        <div class="badge" data-fr>Recommandé</div>
+        <div class="badge" data-en>Recommended</div>
+        <div>
+          <div class="pname">Pro</div>
+        </div>
+        <div class="price">
+          <span class="v">9,99€</span>
+          <span class="u" data-fr>/ mois HT</span>
+          <span class="u" data-en>/ month excl. tax</span>
+        </div>
+        <p class="lede" data-fr>Trois outils branchés en même temps, appels illimités, support prioritaire.</p>
+        <p class="lede" data-en>Three tools connected at once, unlimited calls, priority support.</p>
+        <ul>
+          <li><div><span data-fr>3 connecteurs simultanés</span><span data-en>3 simultaneous connectors</span></div></li>
+          <li><div><span data-fr>Appels illimités</span><span data-en>Unlimited calls</span><span class="meta" data-fr>Fair-use 50 000 / mois</span><span class="meta" data-en>Fair-use 50,000 / month</span></div></li>
+          <li><div><span data-fr>Historique 90 jours</span><span data-en>90-day history</span></div></li>
+          <li><div><span data-fr>Support e-mail prioritaire</span><span data-en>Priority e-mail support</span></div></li>
+        </ul>
+        <a class="pcta" href="#"><span data-fr>Choisir Pro</span><span data-en>Pick Pro</span> <span>→</span></a>
+      </div>
+
+      <div class="plan">
+        <div>
+          <div class="pname">Business</div>
+        </div>
+        <div class="price">
+          <span class="v">49,99€</span>
+          <span class="u" data-fr>/ mois HT</span>
+          <span class="u" data-en>/ month excl. tax</span>
+        </div>
+        <p class="lede" data-fr>Connecteurs illimités, SSO, audit log, et un humain au bout du fil sous 4h.</p>
+        <p class="lede" data-en>Unlimited connectors, SSO, audit log, and a human reachable within 4 hours.</p>
+        <ul>
+          <li><div><span data-fr>Connecteurs illimités</span><span data-en>Unlimited connectors</span></div></li>
+          <li><div><span data-fr>Jusqu'à 25 utilisateurs</span><span data-en>Up to 25 seats</span></div></li>
+          <li><div><span data-fr>SSO · SAML · Audit log</span><span data-en>SSO · SAML · Audit log</span></div></li>
+          <li><div><span data-fr>SLA 4h ouvrées</span><span data-en>4-hour business SLA</span></div></li>
+        </ul>
+        <a class="pcta" href="#"><span data-fr>Choisir Business</span><span data-en>Pick Business</span> <span>→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand foot-col">
+        <div class="logo">ELYS</div>
+        <p data-fr>Connectez n'importe quelle IA à n'importe quel logiciel web. Sans API, sans code, en deux minutes.</p>
+        <p data-en>Connect any AI to any web software. No API, no code, in two minutes.</p>
+        <div class="made">
+          <span class="flag"><span class="b"></span><span class="w"></span><span class="r"></span></span>
+          <span>Made in France</span>
+        </div>
+      </div>
+      <div class="foot-col">
+        <h4>Produit</h4>
+        <ul>
+          <li><a href="#"><span data-fr>Connecteurs</span><span data-en>Connectors</span></a></li>
+          <li><a href="#"><span data-fr>Tarifs</span><span data-en>Pricing</span></a></li>
+          <li><a href="#"><span data-fr>Documentation</span><span data-en>Documentation</span></a></li>
+          <li><a href="#">Changelog</a></li>
+          <li><a href="#">Status</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4>Société</h4>
+        <ul>
+          <li><a href="#"><span data-fr>À propos</span><span data-en>About</span></a></li>
+          <li><a href="#"><span data-fr>Carrières</span><span data-en>Careers</span></a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#"><span data-fr>Sécurité</span><span data-en>Security</span></a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h4 data-fr>Légal</h4>
+        <h4 data-en>Legal</h4>
+        <ul>
+          <li><a href="#">CGV</a></li>
+          <li><a href="#"><span data-fr>Confidentialité</span><span data-en>Privacy</span></a></li>
+          <li><a href="#"><span data-fr>Mentions légales</span><span data-en>Imprint</span></a></li>
+          <li><a href="#">RGPD · DPA</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© 2026 ELYS SAS · RCS Paris 932 481 207</span>
+      <span class="legal">
+        <a href="#">Twitter / X</a>
+        <a href="#">LinkedIn</a>
+        <a href="#">GitHub</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // FR/EN toggle · sets html[data-lang], CSS handles the rest.
+  document.documentElement.setAttribute('data-lang','fr');
+  document.querySelectorAll('[data-set-lang]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const lang = btn.getAttribute('data-set-lang');
+      document.documentElement.setAttribute('data-lang',lang);
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-set-lang]').forEach(b=>{
+        b.classList.toggle('on', b.getAttribute('data-set-lang')===lang);
+      });
+    });
+  });
+</script>
+</body>
+</html>
