@@ -318,29 +318,96 @@ function ScreenConnector({ slug, go }) {
    ════════════════════════════════════════════════════════════════════════ */
 function ScreenLogin({ slug, go }) {
   const c = ELYS_CATALOG.find(x => x.slug === slug) || ELYS_CATALOG[0];
-  const [progress, setProgress] = useS(8);
-  const [step, setStep] = useS(0); // 0 init, 1 entering creds, 2 2fa, 3 done
-  const steps = [
-    "Ouverture du tunnel chiffré",
-    `Authentification ${c.name}`,
-    "Vérification en deux étapes",
-    "Création du connecteur ELYS"
-  ];
 
+  // Job state — driven by the real Konnect backend.
+  const [job, setJob] = useS(null);           // { job_id, status, live_view_url, login_url, mcp_url, error, ... }
+  const [error, setError] = useS(null);
+  const [completing, setCompleting] = useS(false);
+
+  // Slugs we know the backend can actually provision (others stay theatre).
+  const isLive = typeof KONNECT_LIVE_SLUGS !== "undefined" && KONNECT_LIVE_SLUGS.has(c.slug);
+  // Stable demo user id (per-browser). Replace with real auth when wired.
+  const userId = (() => {
+    try {
+      let id = localStorage.getItem("elys_uid");
+      if (!id) { id = "u_" + Math.random().toString(36).slice(2, 10); localStorage.setItem("elys_uid", id); }
+      return id;
+    } catch { return "u_anon"; }
+  })();
+
+  // ── 1. Kick off the job on mount ──
   useE(() => {
-    const id = setInterval(() => {
-      setProgress(p => {
-        const next = Math.min(100, p + 1.8 + Math.random()*1.2);
-        if (next > 30 && step < 1) setStep(1);
-        if (next > 60 && step < 2) setStep(2);
-        if (next > 90 && step < 3) setStep(3);
-        if (next >= 100) { clearInterval(id); setTimeout(()=>go({name:'ready', slug:c.slug}), 600); }
-        return next;
-      });
-    }, 90);
-    return () => clearInterval(id);
-  }, [step]);
+    if (!isLive) return;  // demo connectors keep the static UI
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${KONNECT_API}/api/connect`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ user_id: userId, slug: c.slug }),
+        });
+        if (!r.ok) throw new Error(`POST /api/connect → HTTP ${r.status}`);
+        const data = await r.json();
+        if (cancelled) return;
+        if (data.error) throw new Error(data.error);
+        setJob(data);
+      } catch (e) {
+        if (!cancelled) setError(String(e.message || e));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [c.slug, isLive]);
 
+  // ── 2. Poll the job for endpoint count, mcp_url, etc. ──
+  useE(() => {
+    if (!job?.job_id) return;
+    if (["completed", "failed", "cancelled"].includes(job.status)) return;
+    const id = setInterval(async () => {
+      try {
+        const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        setJob(j => ({ ...(j || {}), ...data }));
+        if (data.status === "completed") {
+          clearInterval(id);
+          // Hand off to the Ready screen with the real MCP URL.
+          try { sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url || ""); } catch {}
+          setTimeout(() => go({ name: "ready", slug: c.slug }), 600);
+        } else if (data.status === "failed" || data.status === "cancelled") {
+          clearInterval(id);
+          setError(data.error || data.status);
+        }
+      } catch { /* network blip — keep polling */ }
+    }, 1500);
+    return () => clearInterval(id);
+  }, [job?.job_id, job?.status]);
+
+  // ── 3. User clicks "J'ai terminé" → finalize ──
+  const onComplete = async () => {
+    if (!job?.job_id || completing) return;
+    setCompleting(true);
+    try {
+      const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/complete`, { method: "POST" });
+      const data = await r.json();
+      setJob(j => ({ ...(j || {}), ...data }));
+      if (data.status === "completed" && data.mcp_url) {
+        try { sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url); } catch {}
+        setTimeout(() => go({ name: "ready", slug: c.slug }), 400);
+      }
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const onCancel = async () => {
+    if (!job?.job_id) { go({ name: "connector", slug: c.slug }); return; }
+    try { await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/cancel`, { method: "POST" }); } catch {}
+    go({ name: "connector", slug: c.slug });
+  };
+
+  // ── Layout ──
   return (
     <div data-screen-label="03 Login">
       <Nav go={(k)=>go({name:k})} />
@@ -356,55 +423,123 @@ function ScreenLogin({ slug, go }) {
             <ConnectorTile item={c} size={48} />
             <div>
               <div className="eyebrow">Connexion sécurisée à {c.name}</div>
-              <h1 className="display login-h">Vos identifiants<br/><span className="blu">ne nous regardent pas.</span></h1>
+              <h1 className="display login-h">
+                Connectez-vous à {c.name}<br/>
+                <span className="blu">dans cette fenêtre.</span>
+              </h1>
+              <p style={{marginTop:14, color:"#374151", maxWidth:560, lineHeight:1.5}}>
+                Une session de navigateur sécurisée s'ouvre ci-dessous. Identifiez-vous
+                normalement, ouvrez la page que vous utilisez le plus souvent (boîte de
+                réception, tableau de bord…), puis cliquez sur <b>« J'ai terminé »</b>.
+                ELYS capture les en-têtes nécessaires et n'enregistre jamais votre
+                mot de passe en clair.
+              </p>
             </div>
           </div>
 
-          <div className="prog-wrap">
-            <div className="prog-meta">
-              <span>{Math.round(progress)}%</span>
-              <span>{steps[step]}</span>
-              <span>{Math.max(2, Math.round((100-progress)/12))} s restantes</span>
+          {!isLive && (
+            <div style={{border:"1px solid #000", padding:24, margin:"24px 0", background:"#ecece5"}}>
+              <b>Bientôt disponible.</b> Le connecteur <b>{c.name}</b> est en cours de
+              construction. Les connecteurs déjà branchés au backend :{" "}
+              <span style={{fontFamily:'"JetBrains Mono",monospace'}}>
+                {[...(typeof KONNECT_LIVE_SLUGS !== "undefined" ? KONNECT_LIVE_SLUGS : [])].join(", ")}
+              </span>.
             </div>
-            <div className="prog-bar"><div className="prog-fill" style={{width: progress+'%'}}></div></div>
-          </div>
+          )}
 
-          <div className="browser">
-            <div className="browser-bar">
-              <span className="dots"><span></span><span></span><span></span></span>
-              <span className="addr">https://login.{c.slug}.com/oauth · vérifié</span>
-              <span className="lock">⌧ TLS 1.3</span>
-            </div>
-            <div className="browser-body">
-              <div className="browser-stack">
-                <div className="bw-line">{c.name.toUpperCase()}</div>
-                <div className="bw-lbl">E-mail professionnel</div>
-                <div className="bw-input">elise@studionorma.fr</div>
-                <div className="bw-lbl">Mot de passe</div>
-                <div className="bw-input">●●●●●●●●●●●●</div>
-                <div className="bw-cta">Continuer →</div>
-                <div className="bw-note">Fenêtre {c.name} · ELYS n'y a pas accès. Vos identifiants restent dans votre session.</div>
-              </div>
-              <div className="browser-overlay">
-                <div className="overlay-dot"></div>
-                <div className="overlay-text">{steps[step]}…</div>
+          {isLive && error && (
+            <div style={{border:"1px solid #c00", padding:16, margin:"24px 0", background:"#fff2f2", color:"#900"}}>
+              <b>Erreur backend :</b> {error}
+              <div style={{marginTop:8, fontSize:13, color:"#600"}}>
+                Vérifiez que le serveur FastAPI tourne et que <code>KONNECT_API</code>
+                ({KONNECT_API}) est joignable depuis votre navigateur.
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="login-steps">
-            {steps.map((s, i) => (
-              <div key={i} className={"lstep " + (i<step?"done":"") + (i===step?" cur":"")}>
-                <span className="lstep-n">{String(i+1).padStart(2,'0')}</span>
-                <span className="lstep-l">{s}</span>
-                <span className="lstep-s">{i<step?'✓':(i===step?'· · ·':'·')}</span>
+          {isLive && !error && (
+            <>
+              <div className="prog-wrap" style={{marginTop:8}}>
+                <div className="prog-meta">
+                  <span>
+                    {job?.status === "completed" ? "Terminé" :
+                     job?.status === "ready"     ? "En attente de votre connexion" :
+                     job?.status === "pending"   ? "Initialisation du navigateur sécurisé…" :
+                     job?.status || "…"}
+                  </span>
+                  <span style={{fontFamily:'"JetBrains Mono",monospace'}}>
+                    {job?.endpoints_seen ?? 0} endpoint(s) capturé(s)
+                    {job?.oauth_tokens_seen ? " · OAuth ✓" : ""}
+                  </span>
+                  <span style={{fontFamily:'"JetBrains Mono",monospace', color:"#6b7280"}}>
+                    {job?.job_id ? `job ${job.job_id.slice(0,8)}` : ""}
+                  </span>
+                </div>
+                <div className="prog-bar">
+                  <div className="prog-fill" style={{
+                    width: (job?.status === "completed" ? 100 :
+                           job?.status === "ready"     ? 70 :
+                           job?.status === "pending"   ? 25 : 5) + "%"
+                  }}></div>
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="trust-bar">
+              <div className="browser">
+                <div className="browser-bar">
+                  <span className="dots"><span></span><span></span><span></span></span>
+                  <span className="addr">{job?.login_url || "Initialisation…"}</span>
+                  <span className="lock">⌧ TLS 1.3</span>
+                </div>
+                <div className="browser-body" style={{padding:0, position:"relative", minHeight:520}}>
+                  {job?.live_view_url ? (
+                    <iframe
+                      src={job.live_view_url}
+                      title={`Session Browserless ${c.name}`}
+                      style={{
+                        position:"absolute", inset:0, width:"100%", height:"100%",
+                        border:0, background:"#fff"
+                      }}
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    />
+                  ) : (
+                    <div className="browser-overlay">
+                      <div className="overlay-dot"></div>
+                      <div className="overlay-text">Démarrage de la session sécurisée…</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{display:"flex", gap:12, marginTop:24, alignItems:"center"}}>
+                <button
+                  className="cta"
+                  onClick={onComplete}
+                  disabled={!job?.live_view_url || job?.status !== "ready" || completing}
+                  style={{padding:"14px 22px"}}
+                >
+                  {completing ? "Finalisation…" : "J'ai terminé"}{" "}
+                  <span className="arr">→</span>
+                </button>
+                <button
+                  className="ghost"
+                  onClick={onCancel}
+                  style={{padding:"14px 22px"}}
+                >
+                  Annuler
+                </button>
+                <span style={{
+                  marginLeft:"auto", fontFamily:'"JetBrains Mono",monospace',
+                  fontSize:12, color:"#6b7280"
+                }}>
+                  Backend : {KONNECT_API.replace(/^https?:\/\//, "")}
+                </span>
+              </div>
+            </>
+          )}
+
+          <div className="trust-bar" style={{marginTop:48}}>
             <div><span className="trust-k">Chiffrement</span><b>AES-256 · TLS 1.3</b></div>
-            <div><span className="trust-k">Stockage</span><b>UE · OVH Roubaix</b></div>
+            <div><span className="trust-k">Stockage</span><b>UE · Supabase</b></div>
             <div><span className="trust-k">Identifiants</span><b>jamais en clair</b></div>
             <div><span className="trust-k">Révocation</span><b>1 clic, à tout moment</b></div>
           </div>
@@ -419,8 +554,16 @@ function ScreenLogin({ slug, go }) {
    4. READY · /connect/<slug>/ready
    ════════════════════════════════════════════════════════════════════════ */
 function ScreenReady({ slug, go }) {
+  // Real MCP URL is stashed by ScreenLogin in sessionStorage on completion.
+  // Falls back to a demo URL only if we got here without going through login
+  // (deep link, refresh, etc.).
+  const mcpUrl = (typeof sessionStorage !== "undefined")
+    ? sessionStorage.getItem("elys_mcp_" + slug)
+    : null;
   const c = ELYS_CATALOG.find(x => x.slug === slug) || ELYS_CATALOG[0];
-  const url = `mcp://elys.app/c/3f9a-${c.slug}`;
+  // Prefer the real MCP URL handed in from the login flow; fall back to a
+  // demo URL only if we got here without one (e.g. deep-link).
+  const url = mcpUrl || `mcp://elys.app/c/3f9a-${c.slug}`;
   const [copied, setCopied] = useS(false);
   const [q, setQ] = useS('');
   const [answer, setAnswer] = useS(null);

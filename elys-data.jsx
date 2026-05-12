@@ -1,5 +1,16 @@
 // ELYS · software catalog used by search + dashboard + connector pages
 // `domain` is used to fetch the real favicon (DuckDuckGo icon service — public CDN).
+
+// Konnect backend base URL. Set this to your Cloudflare-tunnel hostname.
+// Override on a per-deploy basis by setting window.KONNECT_API on app.html.
+const KONNECT_API = (typeof window !== "undefined" && window.KONNECT_API)
+  || "https://api.your-domain.tld";
+
+// Connectors for which the backend has a real client.py shipped, so
+// /api/connect actually works. Other slugs in ELYS_CATALOG show a
+// "bientôt disponible" message instead of starting a job.
+const KONNECT_LIVE_SLUGS = new Set(["outlook", "pennylane", "qonto", "gmail", "sage"]);
+
 const ELYS_CATALOG = [
   { slug:"pennylane", name:"Pennylane", category:"Comptabilité & facturation", color:"#1a3d2e", domain:"pennylane.com",
     desc:"Comptabilité collaborative, facturation et trésorerie pour TPE/PME.",
