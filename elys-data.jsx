@@ -6,10 +6,32 @@
 const KONNECT_API = (typeof window !== "undefined" && window.KONNECT_API)
   || "https://api.your-domain.tld";
 
-// Connectors for which the backend has a real client.py shipped, so
-// /api/connect actually works. Other slugs in ELYS_CATALOG show a
-// "bientôt disponible" message instead of starting a job.
-const KONNECT_LIVE_SLUGS = new Set(["outlook", "pennylane", "qonto", "gmail", "sage"]);
+// Fetch the backend's connector registry once per page load.
+//
+// Resolves to a Map<slug, ConnectorMeta> where ConnectorMeta is whatever
+// /connectors returns:
+//   { slug, name, login_url, build_status: "built" | "pending",
+//     client_available: bool }
+//
+// A slug NOT in this map = not provisionable by the backend → ScreenLogin
+// shows "bientôt disponible". A slug in the map → we start the flow;
+// build_status only affects what /complete returns (mcp_url for built,
+// pending_message for pending).
+async function fetchKonnectRegistry() {
+  if (typeof window === "undefined") return new Map();
+  if (window.__KONNECT_REGISTRY__) return window.__KONNECT_REGISTRY__;
+  if (window.__KONNECT_REGISTRY_PROMISE__) return window.__KONNECT_REGISTRY_PROMISE__;
+  window.__KONNECT_REGISTRY_PROMISE__ = (async () => {
+    const r = await fetch(`${KONNECT_API}/connectors`);
+    if (!r.ok) throw new Error(`GET /connectors → HTTP ${r.status}`);
+    const data = await r.json();
+    const map = new Map();
+    for (const c of (data.connectors || [])) map.set(c.slug, c);
+    window.__KONNECT_REGISTRY__ = map;
+    return map;
+  })();
+  return window.__KONNECT_REGISTRY_PROMISE__;
+}
 
 const ELYS_CATALOG = [
   { slug:"pennylane", name:"Pennylane", category:"Comptabilité & facturation", color:"#1a3d2e", domain:"pennylane.com",

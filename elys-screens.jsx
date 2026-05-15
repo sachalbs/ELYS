@@ -320,12 +320,16 @@ function ScreenLogin({ slug, go }) {
   const c = ELYS_CATALOG.find(x => x.slug === slug) || ELYS_CATALOG[0];
 
   // Job state — driven by the real Konnect backend.
-  const [job, setJob] = useS(null);           // { job_id, status, live_view_url, login_url, mcp_url, error, ... }
+  const [job, setJob] = useS(null);
   const [error, setError] = useS(null);
   const [completing, setCompleting] = useS(false);
 
-  // Slugs we know the backend can actually provision (others stay theatre).
-  const isLive = typeof KONNECT_LIVE_SLUGS !== "undefined" && KONNECT_LIVE_SLUGS.has(c.slug);
+  // Backend registry. "loading" until /connectors resolves, then either
+  // "known" (slug in registry — start the flow) or "unknown" (catalog
+  // entry exists locally but the backend doesn't know about it yet).
+  const [regStatus, setRegStatus] = useS("loading");
+  const [regMeta, setRegMeta] = useS(null);
+
   // Stable demo user id (per-browser). Replace with real auth when wired.
   const userId = (() => {
     try {
@@ -335,9 +339,25 @@ function ScreenLogin({ slug, go }) {
     } catch { return "u_anon"; }
   })();
 
-  // ── 1. Kick off the job on mount ──
+  // ── 0. Fetch the backend registry (cached per page load) ──
   useE(() => {
-    if (!isLive) return;  // demo connectors keep the static UI
+    let cancelled = false;
+    fetchKonnectRegistry()
+      .then(map => {
+        if (cancelled) return;
+        const meta = map.get(c.slug);
+        if (meta) { setRegMeta(meta); setRegStatus("known"); }
+        else      { setRegStatus("unknown"); }
+      })
+      .catch(e => {
+        if (!cancelled) setError(`Backend injoignable : ${e.message || e}`);
+      });
+    return () => { cancelled = true; };
+  }, [c.slug]);
+
+  // ── 1. Kick off the job once the registry confirms the slug is known ──
+  useE(() => {
+    if (regStatus !== "known") return;
     let cancelled = false;
     (async () => {
       try {
@@ -356,7 +376,7 @@ function ScreenLogin({ slug, go }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [c.slug, isLive]);
+  }, [c.slug, regStatus]);
 
   // ── 2. Poll the job for endpoint count, mcp_url, etc. ──
   useE(() => {
@@ -371,7 +391,17 @@ function ScreenLogin({ slug, go }) {
         if (data.status === "completed") {
           clearInterval(id);
           // Hand off to the Ready screen with the real MCP URL.
-          try { sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url || ""); } catch {}
+          try {
+            // Built path: stash MCP URL, clear any stale pending message.
+            // Pending path: stash the pending message, clear any stale URL.
+            if (data.mcp_url) {
+              sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url);
+              sessionStorage.removeItem("elys_pending_" + c.slug);
+            } else if (data.pending_message) {
+              sessionStorage.setItem("elys_pending_" + c.slug, data.pending_message);
+              sessionStorage.removeItem("elys_mcp_" + c.slug);
+            }
+          } catch {}
           setTimeout(() => go({ name: "ready", slug: c.slug }), 600);
         } else if (data.status === "failed" || data.status === "cancelled") {
           clearInterval(id);
@@ -390,8 +420,16 @@ function ScreenLogin({ slug, go }) {
       const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/complete`, { method: "POST" });
       const data = await r.json();
       setJob(j => ({ ...(j || {}), ...data }));
-      if (data.status === "completed" && data.mcp_url) {
-        try { sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url); } catch {}
+      if (data.status === "completed") {
+        try {
+          if (data.mcp_url) {
+            sessionStorage.setItem("elys_mcp_" + c.slug, data.mcp_url);
+            sessionStorage.removeItem("elys_pending_" + c.slug);
+          } else if (data.pending_message) {
+            sessionStorage.setItem("elys_pending_" + c.slug, data.pending_message);
+            sessionStorage.removeItem("elys_mcp_" + c.slug);
+          }
+        } catch {}
         setTimeout(() => go({ name: "ready", slug: c.slug }), 400);
       }
     } catch (e) {
@@ -437,17 +475,20 @@ function ScreenLogin({ slug, go }) {
             </div>
           </div>
 
-          {!isLive && (
-            <div style={{border:"1px solid #000", padding:24, margin:"24px 0", background:"#ecece5"}}>
-              <b>Bientôt disponible.</b> Le connecteur <b>{c.name}</b> est en cours de
-              construction. Les connecteurs déjà branchés au backend :{" "}
-              <span style={{fontFamily:'"JetBrains Mono",monospace'}}>
-                {[...(typeof KONNECT_LIVE_SLUGS !== "undefined" ? KONNECT_LIVE_SLUGS : [])].join(", ")}
-              </span>.
+          {regStatus === "loading" && !error && (
+            <div style={{border:"1px solid #d1d5db", padding:16, margin:"24px 0", background:"#fff", color:"#374151", fontFamily:'"JetBrains Mono",monospace', fontSize:12}}>
+              Chargement du catalogue depuis le backend…
             </div>
           )}
 
-          {isLive && error && (
+          {regStatus === "unknown" && !error && (
+            <div style={{border:"1px solid #000", padding:24, margin:"24px 0", background:"#ecece5"}}>
+              <b>Bientôt disponible.</b> Le connecteur <b>{c.name}</b> n'est pas
+              encore enregistré côté backend. Il sera ajouté très prochainement.
+            </div>
+          )}
+
+          {error && (
             <div style={{border:"1px solid #c00", padding:16, margin:"24px 0", background:"#fff2f2", color:"#900"}}>
               <b>Erreur backend :</b> {error}
               <div style={{marginTop:8, fontSize:13, color:"#600"}}>
@@ -457,8 +498,21 @@ function ScreenLogin({ slug, go }) {
             </div>
           )}
 
-          {isLive && !error && (
+          {regStatus === "known" && !error && (
             <>
+              {regMeta?.build_status === "pending" && (
+                <div style={{
+                  border:"1px solid #1d4ed8", borderLeft:"4px solid #1d4ed8",
+                  padding:"14px 18px", margin:"20px 0",
+                  background:"#eef2ff", color:"#1e3a8a", fontSize:14, lineHeight:1.5
+                }}>
+                  <b>Connecteur en cours de création.</b> Vos identifiants
+                  {" "}<b>{c.name}</b> seront enregistrés en sécurité dès maintenant.
+                  Le connecteur sera disponible dans <b>moins de 24 h</b> ; vous
+                  recevrez une notification quand il sera prêt à l'emploi.
+                </div>
+              )}
+
               <div className="prog-wrap" style={{marginTop:8}}>
                 <div className="prog-meta">
                   <span>
@@ -554,20 +608,112 @@ function ScreenLogin({ slug, go }) {
    4. READY · /connect/<slug>/ready
    ════════════════════════════════════════════════════════════════════════ */
 function ScreenReady({ slug, go }) {
-  // Real MCP URL is stashed by ScreenLogin in sessionStorage on completion.
-  // Falls back to a demo URL only if we got here without going through login
-  // (deep link, refresh, etc.).
+  // Stash from ScreenLogin completion. Exactly one of these should be set:
+  //   - elys_mcp_<slug>      → built path, here's your MCP URL
+  //   - elys_pending_<slug>  → pending path, here's the "available within 24h" message
+  // Neither means deep-link without going through login → demo fallback.
   const mcpUrl = (typeof sessionStorage !== "undefined")
     ? sessionStorage.getItem("elys_mcp_" + slug)
     : null;
+  const pendingMessage = (typeof sessionStorage !== "undefined")
+    ? sessionStorage.getItem("elys_pending_" + slug)
+    : null;
+  const isPending = !mcpUrl && !!pendingMessage;
+
   const c = ELYS_CATALOG.find(x => x.slug === slug) || ELYS_CATALOG[0];
-  // Prefer the real MCP URL handed in from the login flow; fall back to a
-  // demo URL only if we got here without one (e.g. deep-link).
+  // Demo fallback only for the built UI. Pending UI never displays a URL.
   const url = mcpUrl || `mcp://elys.app/c/3f9a-${c.slug}`;
   const [copied, setCopied] = useS(false);
   const [q, setQ] = useS('');
   const [answer, setAnswer] = useS(null);
   const [busy, setBusy] = useS(false);
+
+  // ── Pending build branch: connector code isn't shipped yet ────────────
+  // We have the user's encrypted credentials on file but no MCP URL to
+  // hand out. Show a clear "thanks, we'll notify you" screen instead of
+  // the built-connector dashboard.
+  if (isPending) {
+    return (
+      <div data-screen-label="04 Ready · pending">
+        <Nav go={(k)=>go({name:k})} />
+        <section className="page">
+          <div className="wrap">
+            <Crumb items={[
+              { label:'ELYS', go:'landing' },
+              { label:c.name, go:'connector' },
+              { label:'En attente' }
+            ]} go={(k)=>go({name:k})} />
+
+            <div className="ready-head">
+              <div className="check" style={{background:"#1d4ed8"}}>
+                <span className="check-mark">⏱</span>
+              </div>
+              <div>
+                <div className="eyebrow">Identifiants reçus</div>
+                <h1 className="display ready-h">
+                  {c.name}<br/><span className="blu">en cours de création.</span>
+                </h1>
+                <p className="ready-sub" style={{maxWidth:640}}>
+                  {pendingMessage}
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              border:"1px solid #000", padding:"28px 32px",
+              margin:"40px 0", background:"#fff", display:"grid",
+              gridTemplateColumns:"1fr 1fr", gap:32
+            }}>
+              <div>
+                <div style={{
+                  fontFamily:'"JetBrains Mono",monospace', fontSize:11,
+                  color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em",
+                  marginBottom:8
+                }}>Statut</div>
+                <div style={{fontSize:16, fontWeight:600, color:"#000", marginBottom:4}}>
+                  Identifiants chiffrés AES-256
+                </div>
+                <div style={{fontSize:14, color:"#374151"}}>
+                  Stockés sur infrastructure ELYS · UE
+                </div>
+              </div>
+              <div>
+                <div style={{
+                  fontFamily:'"JetBrains Mono",monospace', fontSize:11,
+                  color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em",
+                  marginBottom:8
+                }}>Délai estimé</div>
+                <div style={{fontSize:16, fontWeight:600, color:"#1d4ed8", marginBottom:4}}>
+                  Sous 24 heures
+                </div>
+                <div style={{fontSize:14, color:"#374151"}}>
+                  Notification dès activation du connecteur
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"flex", gap:12, marginTop:16}}>
+              <button className="cta" onClick={()=>go({name:"landing"})} style={{padding:"14px 22px"}}>
+                Retour à l'accueil <span className="arr">→</span>
+              </button>
+              <button className="ghost" onClick={()=>go({name:"dashboard"})} style={{padding:"14px 22px"}}>
+                Voir mes connecteurs
+              </button>
+            </div>
+
+            <div className="trust-bar" style={{marginTop:64}}>
+              <div><span className="trust-k">Chiffrement</span><b>AES-256 · TLS 1.3</b></div>
+              <div><span className="trust-k">Stockage</span><b>UE · Supabase</b></div>
+              <div><span className="trust-k">Identifiants</span><b>jamais en clair</b></div>
+              <div><span className="trust-k">Révocation</span><b>1 clic, à tout moment</b></div>
+            </div>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+  // ────────────────────────────────────────────────────────────────────
 
   const copy = () => {
     navigator.clipboard?.writeText(url).catch(()=>{});
