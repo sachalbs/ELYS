@@ -558,7 +558,7 @@ function ScreenLogin({ slug, go }) {
                   <span className="addr">{job?.login_url || "Initialisation…"}</span>
                   <span className="lock">⌧ TLS 1.3</span>
                 </div>
-                <div className="browser-body" style={{padding:0, position:"relative", minHeight:520}}>
+                <div className="browser-body" style={{padding:0, position:"relative", aspectRatio:"1440 / 900", minHeight:520}}>
                   {job?.live_view_url ? (
                     <iframe
                       src={job.live_view_url}
