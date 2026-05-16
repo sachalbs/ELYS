@@ -385,6 +385,21 @@ function ScreenLogin({ slug, go }) {
     const id = setInterval(async () => {
       try {
         const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}`);
+        // Server lost our job (typically: backend restarted, jobs are in
+        // memory). Drop the stale id and re-create a fresh job rather than
+        // polling 404 forever.
+        if (r.status === 404) {
+          clearInterval(id);
+          setJob(null);
+          // Trigger the kickoff effect by toggling regStatus through a re-fetch.
+          setRegStatus("loading");
+          fetchKonnectRegistry().then(map => {
+            const meta = map.get(c.slug);
+            if (meta) { setRegMeta(meta); setRegStatus("known"); }
+            else      { setRegStatus("unknown"); }
+          });
+          return;
+        }
         if (!r.ok) return;
         const data = await r.json();
         setJob(j => ({ ...(j || {}), ...data }));
