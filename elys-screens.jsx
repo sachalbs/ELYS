@@ -463,14 +463,14 @@ function ScreenLogin({ slug, go }) {
               <div className="eyebrow">Connexion sécurisée à {c.name}</div>
               <h1 className="display login-h">
                 Connectez-vous à {c.name}<br/>
-                <span className="blu">dans cette fenêtre.</span>
+                <span className="blu">on s'occupe du reste.</span>
               </h1>
               <p style={{marginTop:14, color:"#374151", maxWidth:560, lineHeight:1.5}}>
-                Une session de navigateur sécurisée s'ouvre ci-dessous. Identifiez-vous
-                normalement, ouvrez la page que vous utilisez le plus souvent (boîte de
-                réception, tableau de bord…), puis cliquez sur <b>« J'ai terminé »</b>.
-                ELYS capture les en-têtes nécessaires et n'enregistre jamais votre
-                mot de passe en clair.
+                Une session de navigateur sécurisée s'ouvre ci-dessous.
+                <b> Identifiez-vous normalement.</b> Dès que ELYS détecte votre
+                connexion, on capture automatiquement les en-têtes nécessaires
+                et la page suivante se charge toute seule.
+                Votre mot de passe n'est jamais enregistré en clair.
               </p>
             </div>
           </div>
@@ -516,8 +516,8 @@ function ScreenLogin({ slug, go }) {
               <div className="prog-wrap" style={{marginTop:8}}>
                 <div className="prog-meta">
                   <span>
-                    {job?.status === "completed" ? "Terminé" :
-                     job?.status === "ready"     ? "En attente de votre connexion" :
+                    {job?.status === "completed" ? "Terminé · sécurisation…" :
+                     job?.status === "ready"     ? "Auto-détection active · connectez-vous" :
                      job?.status === "pending"   ? "Initialisation du navigateur sécurisé…" :
                      job?.status || "…"}
                   </span>
@@ -536,7 +536,21 @@ function ScreenLogin({ slug, go }) {
                            job?.status === "pending"   ? 25 : 5) + "%"
                   }}></div>
                 </div>
+                {job?.status === "ready" && (
+                  <div style={{
+                    marginTop:8, fontFamily:'"JetBrains Mono",monospace',
+                    fontSize:11, color:"#1d4ed8", display:"flex",
+                    alignItems:"center", gap:8
+                  }}>
+                    <span style={{
+                      width:6, height:6, background:"#1d4ed8", borderRadius:"50%",
+                      animation:"pulse 1.4s ease-in-out infinite"
+                    }}></span>
+                    Détection automatique active — finalisez votre connexion ci-dessous.
+                  </div>
+                )}
               </div>
+              <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
 
               <div className="browser">
                 <div className="browser-bar">
@@ -566,20 +580,20 @@ function ScreenLogin({ slug, go }) {
 
               <div style={{display:"flex", gap:12, marginTop:24, alignItems:"center"}}>
                 <button
-                  className="cta"
-                  onClick={onComplete}
-                  disabled={!job?.live_view_url || job?.status !== "ready" || completing}
-                  style={{padding:"14px 22px"}}
-                >
-                  {completing ? "Finalisation…" : "J'ai terminé"}{" "}
-                  <span className="arr">→</span>
-                </button>
-                <button
                   className="ghost"
                   onClick={onCancel}
                   style={{padding:"14px 22px"}}
                 >
                   Annuler
+                </button>
+                <button
+                  className="ghost"
+                  onClick={onComplete}
+                  disabled={!job?.live_view_url || job?.status !== "ready" || completing}
+                  style={{padding:"14px 22px", opacity:0.7}}
+                  title="L'auto-détection devrait suffire. Utilisez ce bouton seulement si elle ne déclenche pas après votre connexion."
+                >
+                  {completing ? "Finalisation…" : "Forcer la fin"}
                 </button>
                 <span style={{
                   marginLeft:"auto", fontFamily:'"JetBrains Mono",monospace',
