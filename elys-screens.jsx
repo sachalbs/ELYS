@@ -656,6 +656,124 @@ function ScreenReady({ slug, go }) {
   const [q, setQ] = useS('');
   const [answer, setAnswer] = useS(null);
   const [busy, setBusy] = useS(false);
+  // Modal state for the AI install flows that can't be 1-click (Claude
+  // Desktop config snippet, Claude.ai web settings deeplink, etc.)
+  const [modal, setModal] = useS(null);
+
+  // ── Install-flow helpers ───────────────────────────────────────────────
+  // Cursor accepts a `cursor://` deeplink that pre-fills the MCP install
+  // dialog. Format: cursor://anysphere.cursor-deeplink/mcp/install?name=…
+  //   &config=<urlsafe-base64( JSON.stringify({url:"…"}) )>
+  // Everything else (Claude.ai web, ChatGPT, Claude Desktop, Gemini) uses
+  // either copy-URL+open-settings or a config-file snippet.
+  const b64url = (s) => {
+    try {
+      return btoa(unescape(encodeURIComponent(s)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) { return ''; }
+  };
+  const serverName = `elys-${slug}`;
+  const cursorConfig = JSON.stringify({ url });
+  const cursorDeeplink =
+    `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(serverName)}` +
+    `&config=${b64url(cursorConfig)}`;
+  const desktopSnippet = JSON.stringify(
+    { mcpServers: { [serverName]: { url } } }, null, 2
+  );
+  const geminiSnippet = JSON.stringify(
+    { mcpServers: { [serverName]: { httpUrl: url } } }, null, 2
+  );
+
+  const writeClipboard = async (text) => {
+    try { await navigator.clipboard.writeText(text); } catch (e) {}
+  };
+
+  const installInCursor = () => {
+    // Open the deeplink. The browser hands it to Cursor; if Cursor isn't
+    // installed nothing happens (we still show a fallback modal).
+    window.location.href = cursorDeeplink;
+    // Belt-and-braces fallback after 800ms: show manual instructions.
+    setTimeout(() => {
+      setModal({
+        kind: 'cursor',
+        title: 'Ajouter dans Cursor',
+        intro: `Si Cursor ne s'est pas ouvert automatiquement, copiez cette URL et collez-la dans Cursor › Settings › MCP › New server.`,
+        url,
+      });
+    }, 1200);
+  };
+
+  const installInClaudeAi = async () => {
+    await writeClipboard(url);
+    setModal({
+      kind: 'claude',
+      title: 'Ajouter dans Claude',
+      tabs: [
+        {
+          key: 'web',
+          label: 'Claude.ai (Web)',
+          intro: "L'URL est déjà dans votre presse-papiers.",
+          steps: [
+            'Ouvrez claude.ai › Réglages › Connecteurs.',
+            'Cliquez « Ajouter un connecteur personnalisé ».',
+            'Collez l\'URL ci-dessous, validez.',
+          ],
+          url,
+          cta: { label: 'Ouvrir claude.ai/settings', href: 'https://claude.ai/settings/connectors' },
+        },
+        {
+          key: 'desktop',
+          label: 'Claude Desktop',
+          intro: 'Fusionnez ce bloc dans votre claude_desktop_config.json :',
+          locations: [
+            'macOS  · ~/Library/Application Support/Claude/claude_desktop_config.json',
+            'Windows · %APPDATA%\\Claude\\claude_desktop_config.json',
+          ],
+          snippet: desktopSnippet,
+          steps: [
+            'Ouvrez le fichier ci-dessus (créez-le s\'il n\'existe pas).',
+            'Fusionnez le bloc JSON, sauvegardez.',
+            'Redémarrez Claude Desktop — le connecteur apparaît dans la barre 🔌.',
+          ],
+        },
+      ],
+    });
+  };
+
+  const installInChatGPT = async () => {
+    await writeClipboard(url);
+    setModal({
+      kind: 'chatgpt',
+      title: 'Ajouter dans ChatGPT',
+      intro: "L'URL est déjà dans votre presse-papiers.",
+      steps: [
+        'Allez sur chatgpt.com › Settings › Connectors.',
+        'Cliquez « Create », choisissez « Custom MCP ».',
+        'Collez l\'URL ci-dessous, validez.',
+      ],
+      url,
+      note: 'Disponible sur ChatGPT Plus / Team / Enterprise.',
+      cta: { label: 'Ouvrir ChatGPT', href: 'https://chatgpt.com/#settings/Connectors' },
+    });
+  };
+
+  const installInGemini = async () => {
+    await writeClipboard(url);
+    setModal({
+      kind: 'gemini',
+      title: 'Ajouter dans Gemini',
+      intro: 'Fusionnez ce bloc dans ~/.gemini/settings.json :',
+      snippet: geminiSnippet,
+      steps: [
+        'Ouvrez ~/.gemini/settings.json (créez-le s\'il n\'existe pas).',
+        'Fusionnez le bloc JSON, sauvegardez.',
+        'Relancez votre CLI / IDE Gemini.',
+      ],
+      url,
+    });
+  };
+
+  const closeModal = () => setModal(null);
 
   // ── Pending build branch: connector code isn't shipped yet ────────────
   // We have the user's encrypted credentials on file but no MCP URL to
@@ -804,20 +922,26 @@ function ScreenReady({ slug, go }) {
           <div className="install-grid">
             <div className="install-head">
               <div className="eyebrow">§ Ajouter à votre IA</div>
-              <div className="install-tip">Cliquez l'IA que vous utilisez · instructions automatiques.</div>
+              <div className="install-tip">Cliquez l'IA que vous utilisez · 1 clic ou copie automatique.</div>
             </div>
             {[
-              { name:'Claude',  sub:'Anthropic · Desktop ou Web',    cmd:'claude config add-mcp',              domain:'claude.ai',  color:'#cc785c' },
-              { name:'ChatGPT', sub:'OpenAI · Plus ou Team',         cmd:'Réglages › Connecteurs › Ajouter',  domain:'openai.com', color:'#10a37f' },
-              { name:'Gemini',  sub:'Google · Advanced',             cmd:'gemini connect mcp://…',             domain:'gemini.google.com', color:'#1a73e8' },
-              { name:'Cursor',  sub:'IDE · macOS · Windows · Linux', cmd:'Settings › MCP › New server',        domain:'cursor.com', color:'#000000' }
+              { name:'Cursor',  sub:'IDE · macOS · Windows · Linux', cmd:'1 clic — ouvre Cursor',                 domain:'cursor.com',         color:'#000000', onClick: installInCursor,   ctaLabel: 'Installer dans Cursor', ghost: false },
+              { name:'Claude',  sub:'Anthropic · Web ou Desktop',    cmd:'URL copiée · instructions guidées',    domain:'claude.ai',          color:'#cc785c', onClick: installInClaudeAi, ctaLabel: 'Ajouter dans Claude',   ghost: true  },
+              { name:'ChatGPT', sub:'OpenAI · Plus / Team',          cmd:'URL copiée · ouvre Réglages',          domain:'openai.com',         color:'#10a37f', onClick: installInChatGPT,  ctaLabel: 'Ajouter dans ChatGPT',  ghost: true  },
+              { name:'Gemini',  sub:'Google · CLI / IDE',            cmd:'Bloc settings.json à copier',           domain:'gemini.google.com',  color:'#1a73e8', onClick: installInGemini,   ctaLabel: 'Ajouter dans Gemini',   ghost: true  },
             ].map(ai => (
               <div key={ai.name} className="install-card">
                 <div className="ic-mark"><BrandIcon item={ai} size={28} /></div>
                 <div className="ic-name">{ai.name}</div>
                 <div className="ic-sub">{ai.sub}</div>
                 <div className="ic-cmd">{ai.cmd}</div>
-                <a href="#" className="ic-cta">Ajouter dans {ai.name} <span>→</span></a>
+                <button
+                  type="button"
+                  className={"ic-cta" + (ai.ghost ? " ghost" : "")}
+                  onClick={ai.onClick}
+                >
+                  {ai.ctaLabel} <span>→</span>
+                </button>
               </div>
             ))}
           </div>
@@ -866,7 +990,103 @@ function ScreenReady({ slug, go }) {
           </div>
         </div>
       </section>
+      {modal && <InstallModal modal={modal} onClose={closeModal} writeClipboard={writeClipboard} />}
       <Footer />
+    </div>
+  );
+}
+
+/* ── Install modal ────────────────────────────────────────────────────────
+   Renders one of three shapes:
+   1. Simple — URL + numbered steps + optional external CTA link.
+   2. Snippet — JSON config block to paste into a settings file, with copy.
+   3. Tabs — multiple flows in the same modal (e.g. Claude.ai vs Desktop).
+
+   `modal` shape:
+     { kind, title, intro?, steps?, url?, snippet?, locations?, note?,
+       cta?: {label, href}, tabs?: [{key, label, intro?, steps?, ...}] }
+*/
+function InstallModal({ modal, onClose, writeClipboard }) {
+  const [activeTab, setActiveTab] = useS(modal.tabs ? modal.tabs[0].key : null);
+  const [copyHit, setCopyHit] = useS(null);
+  const bump = (k) => { setCopyHit(k); setTimeout(()=>setCopyHit(null), 1500); };
+
+  const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+  if (typeof window !== 'undefined') {
+    // ESC to close — re-bind on each render is fine for this short-lived modal.
+    window.onkeydown = onKey;
+  }
+
+  const view = modal.tabs ? modal.tabs.find(t => t.key === activeTab) : modal;
+
+  const copy = async (text, k) => { await writeClipboard(text); bump(k); };
+
+  return (
+    <div className="install-backdrop" onClick={(e)=>{ if (e.target === e.currentTarget) onClose(); }}>
+      <div className="install-modal" role="dialog" aria-modal="true">
+        <div className="im-head">
+          <div className="im-title">{modal.title}</div>
+          <button className="im-close" onClick={onClose}>Fermer ✕</button>
+        </div>
+
+        {modal.tabs && (
+          <div style={{padding:'12px 28px 0'}}>
+            <div className="im-tabs">
+              {modal.tabs.map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={"im-tab" + (t.key === activeTab ? " on" : "")}
+                  onClick={()=>setActiveTab(t.key)}
+                >{t.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="im-body">
+          {view.intro && <div style={{fontSize:14, color:'var(--ink)', lineHeight:1.55}}>{view.intro}</div>}
+
+          {view.locations && (
+            <div style={{fontFamily:'"JetBrains Mono",monospace', fontSize:12, color:'var(--muted)'}}>
+              {view.locations.map((l,i)=>(<div key={i}>· {l}</div>))}
+            </div>
+          )}
+
+          {view.steps && view.steps.map((s, i) => (
+            <div key={i} className="im-step"><span className="n">{String(i+1).padStart(2,'0')}</span><span>{s}</span></div>
+          ))}
+
+          {view.url && !view.snippet && (
+            <div className="im-url">
+              <span>{view.url}</span>
+              <button onClick={()=>copy(view.url, 'url')}>{copyHit==='url'?'✓ Copié':'Copier'}</button>
+            </div>
+          )}
+
+          {view.snippet && (
+            <div className="im-snippet">
+              <button onClick={()=>copy(view.snippet, 'snippet')}>{copyHit==='snippet'?'✓ Copié':'Copier'}</button>
+              {view.snippet}
+            </div>
+          )}
+
+          {view.note && (
+            <div style={{fontFamily:'"JetBrains Mono",monospace', fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em'}}>
+              {view.note}
+            </div>
+          )}
+        </div>
+
+        <div className="im-foot">
+          <button className="im-close" onClick={onClose}>Fermer</button>
+          {view.cta && (
+            <a className="cta" href={view.cta.href} target="_blank" rel="noopener noreferrer">
+              {view.cta.label} <span className="arr">→</span>
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

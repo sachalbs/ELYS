@@ -307,8 +307,35 @@
   .ic-name{font-family:"Archivo Black",sans-serif;font-size:22px;color:var(--ink);text-transform:uppercase}
   .ic-sub{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em}
   .ic-cmd{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--ink);background:#fff;border:1px solid var(--rule);padding:10px 12px;margin-top:6px;word-break:break-all}
-  .ic-cta{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;border:1px solid var(--blue)}
+  .ic-cta{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--blue);color:#fff;font-size:13px;font-weight:600;border:1px solid var(--blue);cursor:pointer}
   .ic-cta:hover{background:var(--blue-ink);color:#fff}
+  .ic-cta.ghost{background:#fff;color:var(--ink);border-color:var(--ink)}
+  .ic-cta.ghost:hover{background:var(--ink);color:var(--cream)}
+
+  /* Install modal — overlay with snippet/instructions for AI clients
+     that can't take a 1-click deeplink. */
+  .install-backdrop{position:fixed;inset:0;background:rgba(13,17,23,0.62);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:32px}
+  .install-modal{background:var(--cream);border:1px solid var(--ink);max-width:680px;width:100%;max-height:88vh;overflow:auto;display:flex;flex-direction:column}
+  .im-head{display:flex;align-items:baseline;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--ink);background:#fff}
+  .im-title{font-family:"Archivo Black",sans-serif;font-size:22px;color:var(--ink);text-transform:uppercase}
+  .im-close{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted);cursor:pointer;background:transparent;border:none;padding:6px 10px}
+  .im-close:hover{color:var(--ink)}
+  .im-body{padding:24px 28px;display:flex;flex-direction:column;gap:18px}
+  .im-tabs{display:flex;gap:0;border:1px solid var(--ink);background:#fff}
+  .im-tab{flex:1;padding:10px 14px;font-family:"JetBrains Mono",monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:transparent;border:none;border-right:1px solid var(--rule);cursor:pointer}
+  .im-tab:last-child{border-right:none}
+  .im-tab.on{background:var(--ink);color:var(--cream)}
+  .im-tab:hover:not(.on){color:var(--ink);background:var(--cream)}
+  .im-step{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--ink);line-height:1.55}
+  .im-step .n{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--blue);font-weight:600;min-width:18px;padding-top:2px}
+  .im-url{font-family:"JetBrains Mono",monospace;font-size:13px;background:#fff;border:1px solid var(--rule);padding:10px 12px;word-break:break-all;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .im-url button{background:var(--ink);color:var(--cream);padding:6px 12px;font-family:"JetBrains Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;border:none;white-space:nowrap}
+  .im-url button:hover{background:var(--blue)}
+  .im-snippet{font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.6;background:#0d1117;color:#e6edf3;padding:16px 18px;white-space:pre;overflow-x:auto;position:relative}
+  .im-snippet button{position:absolute;top:10px;right:10px;background:#21262d;color:#e6edf3;border:1px solid #30363d;padding:5px 10px;font-family:"JetBrains Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer}
+  .im-snippet button:hover{background:#30363d}
+  .im-foot{padding:16px 28px;border-top:1px solid var(--rule);background:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .im-foot .cta{padding:11px 18px;font-size:13px}
 
   .test-box{border:1px solid var(--ink);background:#fff;margin-bottom:48px}
   .test-head{display:flex;align-items:baseline;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--rule);background:var(--cream)}
