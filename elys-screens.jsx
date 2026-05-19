@@ -427,12 +427,21 @@ function ScreenLogin({ slug, go }) {
     return () => clearInterval(id);
   }, [job?.job_id, job?.status]);
 
-  // ── 3. User clicks "J'ai terminé" → finalize ──
+  // ── 3. User clicks "Forcer la fin" → finalize ──
+  // The backend now refuses /complete with HTTP 409 when creds_ready is
+  // false (unless ?force=1). The button is also disabled in the UI until
+  // creds_ready, so a 409 here means the user used force= via DevTools
+  // OR the page state flipped between the disabled check and the click.
   const onComplete = async () => {
     if (!job?.job_id || completing) return;
     setCompleting(true);
     try {
       const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/complete`, { method: "POST" });
+      if (r.status === 409) {
+        const errBody = await r.json().catch(()=>({detail:"creds not ready"}));
+        setError(errBody.detail || "Connexion pas encore détectée — connectez-vous d'abord.");
+        return;
+      }
       const data = await r.json();
       setJob(j => ({ ...(j || {}), ...data }));
       if (data.status === "completed") {
@@ -573,7 +582,7 @@ function ScreenLogin({ slug, go }) {
                   <span className="addr">{job?.login_url || "Initialisation…"}</span>
                   <span className="lock">⌧ TLS 1.3</span>
                 </div>
-                <div className="browser-body" style={{padding:0, position:"relative", aspectRatio:"1200 / 750", minHeight:760}}>
+                <div className="browser-body" style={{padding:0, position:"relative", aspectRatio:"1440 / 900", minHeight:820}}>
                   {job?.live_view_url ? (
                     <iframe
                       src={job.live_view_url}
@@ -593,7 +602,27 @@ function ScreenLogin({ slug, go }) {
                 </div>
               </div>
 
-              <div style={{display:"flex", gap:12, marginTop:24, alignItems:"center"}}>
+              {/* Live capture status — green when backend confirms creds
+                  are detected; otherwise pulsing blue "waiting". */}
+              <div style={{
+                marginTop:16, padding:"10px 14px",
+                border: `1px solid ${job?.creds_ready ? "#16a34a" : "#1d4ed8"}`,
+                background: job?.creds_ready ? "#ecfdf5" : "#eff6ff",
+                fontFamily:'"JetBrains Mono",monospace', fontSize:12,
+                color: job?.creds_ready ? "#14532d" : "#1e3a8a",
+                display:"flex", alignItems:"center", gap:10
+              }}>
+                <span style={{
+                  width:8, height:8, borderRadius:"50%",
+                  background: job?.creds_ready ? "#16a34a" : "#1d4ed8",
+                  animation: job?.creds_ready ? "none" : "pulse 1.4s ease-in-out infinite",
+                }}></span>
+                {job?.creds_ready
+                  ? `✓ Connexion détectée — ${job.endpoints_seen} endpoint${job.endpoints_seen>1?"s":""} capturé${job.endpoints_seen>1?"s":""}. Finalisation possible.`
+                  : `Connectez-vous à ${c.name} dans le cadre ci-dessus. La détection se fera automatiquement.`}
+              </div>
+
+              <div style={{display:"flex", gap:12, marginTop:16, alignItems:"center"}}>
                 <button
                   className="ghost"
                   onClick={onCancel}
@@ -602,13 +631,23 @@ function ScreenLogin({ slug, go }) {
                   Annuler
                 </button>
                 <button
-                  className="ghost"
+                  className={job?.creds_ready ? "cta" : "ghost"}
                   onClick={onComplete}
-                  disabled={!job?.live_view_url || job?.status !== "ready" || completing}
-                  style={{padding:"14px 22px", opacity:0.7}}
-                  title="L'auto-détection devrait suffire. Utilisez ce bouton seulement si elle ne déclenche pas après votre connexion."
+                  disabled={!job?.live_view_url || job?.status !== "ready" || !job?.creds_ready || completing}
+                  style={{
+                    padding:"14px 22px",
+                    opacity: job?.creds_ready ? 1 : 0.45,
+                    cursor: job?.creds_ready ? "pointer" : "not-allowed",
+                  }}
+                  title={job?.creds_ready
+                    ? "Vos identifiants ont été détectés — vous pouvez finaliser maintenant."
+                    : "En attente : connectez-vous d'abord à votre compte dans le cadre."}
                 >
-                  {completing ? "Finalisation…" : "Forcer la fin"}
+                  {completing
+                    ? "Finalisation…"
+                    : job?.creds_ready
+                      ? "Finaliser la connexion →"
+                      : "En attente de connexion…"}
                 </button>
                 <span style={{
                   marginLeft:"auto", fontFamily:'"JetBrains Mono",monospace',
