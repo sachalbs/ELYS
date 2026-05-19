@@ -6,6 +6,55 @@
 const KONNECT_API = (typeof window !== "undefined" && window.KONNECT_API)
   || "https://api.your-domain.tld";
 
+// ── Anonymous session ──
+//
+// On first load, mint a session token via POST /api/auth/anon and cache
+// it in localStorage. Every authenticated call (`/api/connect`,
+// `/api/jobs/*`) must send `Authorization: Bearer <token>`. The backend
+// derives the user_id from the token — the frontend never asserts
+// identity in the request body.
+//
+// If the cached token is invalid (server rotated ELYS_AUTH_SECRET or
+// wiped sessions), the next API call returns 401 — we detect that and
+// re-mint a fresh one before retrying once.
+
+const ELYS_TOKEN_KEY = "elys_session_token_v1";
+const ELYS_UID_KEY   = "elys_session_uid_v1";
+
+async function elysGetSession() {
+  if (typeof window === "undefined") return { token: null, user_id: null };
+  let token = localStorage.getItem(ELYS_TOKEN_KEY);
+  let user_id = localStorage.getItem(ELYS_UID_KEY);
+  if (token && user_id) return { token, user_id };
+  const r = await fetch(`${KONNECT_API}/api/auth/anon`, { method: "POST" });
+  if (!r.ok) throw new Error(`auth/anon → HTTP ${r.status}`);
+  const data = await r.json();
+  localStorage.setItem(ELYS_TOKEN_KEY, data.token);
+  localStorage.setItem(ELYS_UID_KEY,   data.user_id);
+  return { token: data.token, user_id: data.user_id };
+}
+
+// All `/api/*` calls should go through this wrapper. It adds the Bearer
+// header, and on 401 it clears the cached token, re-mints, and retries
+// once — so a backend secret rotation or session wipe is recovered
+// transparently on the user's next click.
+async function elysFetch(path, opts = {}) {
+  const session = await elysGetSession();
+  const headers = {
+    ...(opts.headers || {}),
+    "Authorization": `Bearer ${session.token}`,
+  };
+  let r = await fetch(`${KONNECT_API}${path}`, { ...opts, headers });
+  if (r.status === 401) {
+    localStorage.removeItem(ELYS_TOKEN_KEY);
+    localStorage.removeItem(ELYS_UID_KEY);
+    const fresh = await elysGetSession();
+    headers["Authorization"] = `Bearer ${fresh.token}`;
+    r = await fetch(`${KONNECT_API}${path}`, { ...opts, headers });
+  }
+  return r;
+}
+
 // Fetch the backend's connector registry once per page load.
 //
 // Resolves to a Map<slug, ConnectorMeta> where ConnectorMeta is whatever
@@ -116,4 +165,8 @@ const ELYS_ACTIVE = [
   { slug:"outlook",   status:"expired", calls:64,  lastUsed:"il y a 3 jours", url:"mcp://elys.app/c/c19d-outlook" }
 ];
 
-Object.assign(window, { ELYS_CATALOG, ELYS_FEATURED, ELYS_MARQUEE, ELYS_ACTIVE });
+Object.assign(window, {
+  ELYS_CATALOG, ELYS_FEATURED, ELYS_MARQUEE, ELYS_ACTIVE,
+  // Auth helpers — used by ScreenLogin / ScreenReady from elys-screens.jsx
+  elysGetSession, elysFetch, KONNECT_API,
+});

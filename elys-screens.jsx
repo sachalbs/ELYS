@@ -330,14 +330,15 @@ function ScreenLogin({ slug, go }) {
   const [regStatus, setRegStatus] = useS("loading");
   const [regMeta, setRegMeta] = useS(null);
 
-  // Stable demo user id (per-browser). Replace with real auth when wired.
-  const userId = (() => {
-    try {
-      let id = localStorage.getItem("elys_uid");
-      if (!id) { id = "u_" + Math.random().toString(36).slice(2, 10); localStorage.setItem("elys_uid", id); }
-      return id;
-    } catch { return "u_anon"; }
-  })();
+  // The user_id is no longer client-controlled. It's owned by the backend
+  // and derived from the session token on every API call (see elysFetch
+  // in elys-data.jsx). We expose it here purely for UI display.
+  const [userId, setUserId] = useS(null);
+  useE(() => {
+    let cancelled = false;
+    elysGetSession().then(s => { if (!cancelled) setUserId(s.user_id); }).catch(()=>{});
+    return () => { cancelled = true; };
+  }, []);
 
   // ── 0. Fetch the backend registry (cached per page load) ──
   useE(() => {
@@ -361,11 +362,16 @@ function ScreenLogin({ slug, go }) {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`${KONNECT_API}/api/connect`, {
+        const r = await elysFetch(`/api/connect`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ user_id: userId, slug: c.slug }),
+          // user_id is derived from the Bearer token server-side; we no
+          // longer pass it in the body.
+          body: JSON.stringify({ slug: c.slug }),
         });
+        if (r.status === 429) {
+          throw new Error("Trop de sessions actives — annule une autre avant d'en relancer une.");
+        }
         if (!r.ok) throw new Error(`POST /api/connect → HTTP ${r.status}`);
         const data = await r.json();
         if (cancelled) return;
@@ -384,7 +390,7 @@ function ScreenLogin({ slug, go }) {
     if (["completed", "failed", "cancelled"].includes(job.status)) return;
     const id = setInterval(async () => {
       try {
-        const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}`);
+        const r = await elysFetch(`/api/jobs/${job.job_id}`);
         // Server lost our job (typically: backend restarted, jobs are in
         // memory). Drop the stale id and re-create a fresh job rather than
         // polling 404 forever.
@@ -436,7 +442,7 @@ function ScreenLogin({ slug, go }) {
     if (!job?.job_id || completing) return;
     setCompleting(true);
     try {
-      const r = await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/complete`, { method: "POST" });
+      const r = await elysFetch(`/api/jobs/${job.job_id}/complete`, { method: "POST" });
       if (r.status === 409) {
         const errBody = await r.json().catch(()=>({detail:"creds not ready"}));
         setError(errBody.detail || "Connexion pas encore détectée — connectez-vous d'abord.");
@@ -465,7 +471,7 @@ function ScreenLogin({ slug, go }) {
 
   const onCancel = async () => {
     if (!job?.job_id) { go({ name: "connector", slug: c.slug }); return; }
-    try { await fetch(`${KONNECT_API}/api/jobs/${job.job_id}/cancel`, { method: "POST" }); } catch {}
+    try { await elysFetch(`/api/jobs/${job.job_id}/cancel`, { method: "POST" }); } catch {}
     go({ name: "connector", slug: c.slug });
   };
 
@@ -582,7 +588,7 @@ function ScreenLogin({ slug, go }) {
                   <span className="addr">{job?.login_url || "Initialisation…"}</span>
                   <span className="lock">⌧ TLS 1.3</span>
                 </div>
-                <div className="browser-body" style={{padding:0, position:"relative", aspectRatio:"1440 / 900", minHeight:820}}>
+                <div className="browser-body" style={{padding:0, position:"relative", aspectRatio:"1440 / 900", minHeight:"min(820px, 70vh)"}}>
                   {job?.live_view_url ? (
                     <iframe
                       src={job.live_view_url}
@@ -591,7 +597,11 @@ function ScreenLogin({ slug, go }) {
                         position:"absolute", inset:0, width:"100%", height:"100%",
                         border:0, background:"#fff"
                       }}
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      /* `allow-same-origin` removed: the viewer is served
+                         from the backend tunnel (cross-origin to ELYS), so
+                         we don't need it; keeping it would let a compromised
+                         viewer read parent localStorage. */
+                      sandbox="allow-scripts allow-forms allow-popups"
                     />
                   ) : (
                     <div className="browser-overlay">
@@ -716,11 +726,23 @@ function ScreenReady({ slug, go }) {
   const cursorDeeplink =
     `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(serverName)}` +
     `&config=${b64url(cursorConfig)}`;
+  // Claude Desktop (config v2) accepts native HTTP MCP servers as:
+  //   { "url": "https://…", "type": "http" }
+  // Older builds need a stdio wrapper (`mcp-remote`); we ship both forms.
   const desktopSnippet = JSON.stringify(
-    { mcpServers: { [serverName]: { url } } }, null, 2
+    { mcpServers: { [serverName]: { type: "http", url } } }, null, 2
   );
+  const desktopWrapperSnippet = JSON.stringify(
+    { mcpServers: { [serverName]: {
+      command: "npx",
+      args: ["-y", "mcp-remote", url],
+    } } }, null, 2
+  );
+  // Gemini CLI / code-assist accepts `url` for HTTP MCP. The `httpUrl`
+  // key (used by older Vertex AI samples) is NOT recognized by the
+  // public Gemini CLI as of mid-2026.
   const geminiSnippet = JSON.stringify(
-    { mcpServers: { [serverName]: { httpUrl: url } } }, null, 2
+    { mcpServers: { [serverName]: { url } } }, null, 2
   );
 
   const writeClipboard = async (text) => {
@@ -729,17 +751,26 @@ function ScreenReady({ slug, go }) {
 
   const installInCursor = () => {
     // Open the deeplink. The browser hands it to Cursor; if Cursor isn't
-    // installed nothing happens (we still show a fallback modal).
+    // installed the window never blurs → we show a manual-fallback modal.
+    // If Cursor IS installed, the OS focuses Cursor and our tab blurs,
+    // which we use to cancel the fallback.
+    let cancelled = false;
+    const onBlur = () => { cancelled = true; };
+    const onVis = () => { if (document.hidden) cancelled = true; };
+    window.addEventListener('blur', onBlur, { once: true });
+    document.addEventListener('visibilitychange', onVis, { once: true });
     window.location.href = cursorDeeplink;
-    // Belt-and-braces fallback after 800ms: show manual instructions.
     setTimeout(() => {
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVis);
+      if (cancelled) return;   // Cursor opened — don't bother the user.
       setModal({
         kind: 'cursor',
         title: 'Ajouter dans Cursor',
-        intro: `Si Cursor ne s'est pas ouvert automatiquement, copiez cette URL et collez-la dans Cursor › Settings › MCP › New server.`,
+        intro: "Cursor ne s'est pas ouvert. Copiez l'URL et collez-la dans Cursor › Settings › MCP › New server.",
         url,
       });
-    }, 1200);
+    }, 1400);
   };
 
   const installInClaudeAi = async () => {
@@ -763,12 +794,14 @@ function ScreenReady({ slug, go }) {
         {
           key: 'desktop',
           label: 'Claude Desktop',
-          intro: 'Fusionnez ce bloc dans votre claude_desktop_config.json :',
+          intro: 'Fusionnez ce bloc dans votre claude_desktop_config.json (Claude Desktop ≥ 0.10) :',
           locations: [
             'macOS  · ~/Library/Application Support/Claude/claude_desktop_config.json',
             'Windows · %APPDATA%\\Claude\\claude_desktop_config.json',
+            'Linux  · ~/.config/Claude/claude_desktop_config.json',
           ],
           snippet: desktopSnippet,
+          altSnippet: { label: "Anciennes versions (via mcp-remote)", value: desktopWrapperSnippet },
           steps: [
             'Ouvrez le fichier ci-dessus (créez-le s\'il n\'existe pas).',
             'Fusionnez le bloc JSON, sauvegardez.',
@@ -1048,13 +1081,18 @@ function ScreenReady({ slug, go }) {
 function InstallModal({ modal, onClose, writeClipboard }) {
   const [activeTab, setActiveTab] = useS(modal.tabs ? modal.tabs[0].key : null);
   const [copyHit, setCopyHit] = useS(null);
+  const [showAlt, setShowAlt] = useS(false);
   const bump = (k) => { setCopyHit(k); setTimeout(()=>setCopyHit(null), 1500); };
 
-  const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-  if (typeof window !== 'undefined') {
-    // ESC to close — re-bind on each render is fine for this short-lived modal.
-    window.onkeydown = onKey;
-  }
+  // ESC handler — properly attached/detached via useEffect so we don't
+  // clobber other handlers and so the listener disappears when the modal
+  // closes. (Previous code did `window.onkeydown = onKey` which both
+  // overwrote any prior handler and never cleaned up.)
+  useE(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const view = modal.tabs ? modal.tabs.find(t => t.key === activeTab) : modal;
 
@@ -1107,6 +1145,30 @@ function InstallModal({ modal, onClose, writeClipboard }) {
             <div className="im-snippet">
               <button onClick={()=>copy(view.snippet, 'snippet')}>{copyHit==='snippet'?'✓ Copié':'Copier'}</button>
               {view.snippet}
+            </div>
+          )}
+
+          {view.altSnippet && (
+            <div>
+              <button
+                type="button"
+                onClick={()=>setShowAlt(v=>!v)}
+                style={{
+                  background:"transparent", border:"none", padding:0, cursor:"pointer",
+                  fontFamily:'"JetBrains Mono",monospace', fontSize:11,
+                  color:"var(--blue)", textTransform:"uppercase", letterSpacing:"0.06em",
+                }}
+              >
+                {showAlt ? "▼" : "▶"} {view.altSnippet.label}
+              </button>
+              {showAlt && (
+                <div className="im-snippet" style={{marginTop:8}}>
+                  <button onClick={()=>copy(view.altSnippet.value, 'altsnippet')}>
+                    {copyHit==='altsnippet'?'✓ Copié':'Copier'}
+                  </button>
+                  {view.altSnippet.value}
+                </div>
+              )}
             </div>
           )}
 
